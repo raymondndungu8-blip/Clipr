@@ -11,6 +11,8 @@ const CSP = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  // Pin the workspace root — a stray parent-dir lockfile otherwise confuses inference.
+  turbopack: { root: __dirname },
   async headers() {
     return [
       {

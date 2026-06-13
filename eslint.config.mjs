@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // worker/ is a separate CommonJS Node project (own package.json + Dockerfile),
+    // not part of the Next.js build — it legitimately uses require().
+    "worker/**",
   ]),
 ]);
 
