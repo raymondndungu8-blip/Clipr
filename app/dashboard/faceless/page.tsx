@@ -148,7 +148,7 @@ export default function FacelessPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
         {/* controls */}
-        <div className="flex h-fit flex-col gap-5 rounded-xl border border-clipr-border bg-clipr-card p-5">
+        <div className="flex h-fit flex-col gap-5 rounded-2xl bg-clipr-card neo-raised p-5">
           <div className="flex flex-col gap-2">
             <Label htmlFor="topic">Topic</Label>
             <Input
@@ -207,16 +207,11 @@ export default function FacelessPage() {
                   type="button"
                   onClick={() => setVoice(v)}
                   className={cn(
-                    "rounded-[20px] border px-3 py-1.5 text-sm transition-all",
+                    "rounded-full px-4 py-1.5 text-sm font-medium transition-all active:scale-95",
                     voice === v
-                      ? "border-clipr-gold text-clipr-gold"
-                      : "border-clipr-border bg-clipr-surface text-clipr-secondary hover:text-clipr-text"
+                      ? "neo-inset text-clipr-gold"
+                      : "bg-clipr-card neo-raised-sm text-clipr-secondary hover:text-clipr-text"
                   )}
-                  style={
-                    voice === v
-                      ? { backgroundColor: "rgba(201,168,76,0.18)" }
-                      : undefined
-                  }
                 >
                   {v}
                 </button>
@@ -281,7 +276,7 @@ export default function FacelessPage() {
                       {script.hashtags.map((tag) => (
                         <span
                           key={tag}
-                          className="rounded-[20px] border border-clipr-border bg-clipr-surface px-2.5 py-0.5 font-mono text-xs text-clipr-secondary"
+                          className="rounded-full bg-clipr-card neo-inset px-2.5 py-0.5 font-mono text-xs text-clipr-secondary"
                         >
                           {tag.startsWith("#") ? tag : `#${tag}`}
                         </span>
@@ -292,7 +287,7 @@ export default function FacelessPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-clipr-gold text-clipr-gold hover:text-clipr-gold"
+                      className="text-clipr-gold hover:text-clipr-gold"
                       onClick={copyDescription}
                     >
                       <Copy className="size-3.5" />
@@ -307,7 +302,7 @@ export default function FacelessPage() {
               </div>
 
               {/* scene breakdown */}
-              <div className="rounded-xl border border-clipr-border bg-clipr-card p-4">
+              <div className="rounded-2xl bg-clipr-card neo-raised p-4">
                 <h3 className="mb-3 text-sm font-semibold text-clipr-text">
                   Scene breakdown
                 </h3>

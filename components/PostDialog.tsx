@@ -81,7 +81,7 @@ export default function PostDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-clipr-card">
+      <DialogContent className="rounded-2xl border-none bg-clipr-card shadow-none neo-raised">
         <DialogHeader>
           <DialogTitle>Post to socials</DialogTitle>
           <DialogDescription>

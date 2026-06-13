@@ -104,7 +104,7 @@ export default function HooksPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
         {/* controls */}
-        <div className="flex h-fit flex-col gap-5 rounded-xl border border-clipr-border bg-clipr-card p-5">
+        <div className="flex h-fit flex-col gap-5 rounded-2xl bg-clipr-card neo-raised p-5">
           <div className="flex flex-col gap-2">
             <Label htmlFor="topic">Topic</Label>
             <Input
@@ -183,11 +183,11 @@ export default function HooksPage() {
               {hooks.map((h, i) => (
                 <div
                   key={i}
-                  className="animate-fade-up flex flex-col gap-3 rounded-xl border border-clipr-border bg-clipr-card p-5"
+                  className="animate-fade-up flex flex-col gap-3 rounded-xl bg-clipr-card neo-raised p-5"
                   style={{ animationDelay: `${i * 0.08}s` }}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="rounded-[20px] border border-clipr-border bg-clipr-surface px-2.5 py-0.5 text-xs uppercase text-clipr-secondary">
+                    <span className="rounded-full neo-inset px-2.5 py-0.5 text-[10px] font-bold uppercase text-clipr-gold">
                       {h.type}
                     </span>
                     <span
@@ -204,7 +204,7 @@ export default function HooksPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="mt-auto w-fit border-clipr-gold text-clipr-gold hover:text-clipr-gold"
+                    className="mt-auto w-fit text-clipr-gold hover:text-clipr-gold"
                     onClick={() => copyHook(h.hook)}
                   >
                     <Copy className="size-3.5" />

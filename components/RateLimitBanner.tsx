@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { X, AlarmClock } from "lucide-react";
 import { minutesUntil } from "@/components/lib/api";
 
 type RateLimitBannerProps = {
@@ -17,28 +17,29 @@ export default function RateLimitBanner({
   return (
     <div
       role="alert"
-      className="flex items-start justify-between gap-3 rounded-lg p-4"
-      style={{
-        backgroundColor: "#FFF8E6",
-        borderLeft: "4px solid var(--clipr-gold)",
-        color: "#3A2F12",
-      }}
+      className="flex items-start justify-between gap-3 rounded-xl bg-clipr-card neo-inset p-4"
     >
-      <div>
-        <p className="text-sm font-semibold">Hourly limit reached</p>
-        <p className="text-sm">
-          You&apos;ve reached your hourly limit. Resets in {minutes} minute
-          {minutes === 1 ? "" : "s"}.
-        </p>
+      <div className="flex items-start gap-3">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-full neo-raised text-clipr-gold">
+          <AlarmClock className="size-4" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-clipr-text">
+            Hourly limit reached
+          </p>
+          <p className="text-sm text-clipr-secondary">
+            You&apos;ve reached your hourly limit. Resets in {minutes} minute
+            {minutes === 1 ? "" : "s"}.
+          </p>
+        </div>
       </div>
       <button
         type="button"
         onClick={onDismiss}
         aria-label="Dismiss"
-        className="shrink-0 rounded-md p-1 transition-opacity hover:opacity-70"
-        style={{ color: "#3A2F12" }}
+        className="flex size-7 shrink-0 items-center justify-center rounded-full neo-raised text-clipr-secondary transition-transform active:scale-90 hover:text-clipr-text"
       >
-        <X className="size-4" />
+        <X className="size-3.5" />
       </button>
     </div>
   );

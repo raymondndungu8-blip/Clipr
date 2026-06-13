@@ -31,7 +31,7 @@ export default function Home() {
   return (
     <div className="flex min-h-full flex-col bg-clipr-bg">
       {/* nav */}
-      <header className="sticky top-0 z-40 h-[54px] border-b border-clipr-border bg-clipr-bg/90 backdrop-blur">
+      <header className="sticky top-0 z-40 h-[54px] bg-clipr-bg/90 backdrop-blur neo-raised-sm">
         <div className="mx-auto flex h-full max-w-[1180px] items-center justify-between px-6">
           <CliprLogo />
           <div className="flex items-center gap-2">
@@ -49,7 +49,7 @@ export default function Home() {
         {/* hero */}
         <section className="grid grid-cols-1 gap-10 py-16 md:grid-cols-2 md:items-center md:py-24">
           <div className="animate-fade-up flex flex-col gap-6">
-            <span className="w-fit rounded-[20px] border border-clipr-border bg-clipr-surface px-3 py-1 font-mono text-xs uppercase text-clipr-gold">
+            <span className="w-fit rounded-full bg-clipr-card neo-inset px-3.5 py-1 font-mono text-xs uppercase text-clipr-gold">
               For African creators
             </span>
             <h1 className="text-4xl font-bold leading-tight text-clipr-text md:text-[36px]">
@@ -91,13 +91,10 @@ export default function Home() {
             {tools.map((t, i) => (
               <div
                 key={t.title}
-                className="animate-fade-up flex flex-col gap-3 rounded-xl border border-clipr-border bg-clipr-card p-6"
+                className="animate-fade-up flex flex-col gap-3 rounded-xl bg-clipr-card neo-raised p-6 transition-transform active:scale-[0.98]"
                 style={{ animationDelay: `${i * 0.08}s` }}
               >
-                <div
-                  className="flex size-10 items-center justify-center rounded-lg"
-                  style={{ backgroundColor: "var(--clipr-gold-glow)" }}
-                >
+                <div className="flex size-12 items-center justify-center rounded-full neo-inset">
                   <t.icon className="size-5 text-clipr-gold" />
                 </div>
                 <h3 className="text-lg font-semibold text-clipr-text">
@@ -123,7 +120,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-clipr-border py-8">
+      <footer className="mt-8 py-8 neo-raised-sm">
         <div className="mx-auto flex max-w-[1180px] flex-col items-center gap-2 px-6 text-center">
           <CliprLogo />
           <p className="text-sm text-clipr-secondary">

@@ -1,20 +1,39 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* ---------- Clipr design tokens ---------- */
+/* ---------- Clipr design tokens — Stitch "Silk" neumorphic light theme ---------- */
 :root {
-  --clipr-bg: #0a0a0a;
-  --clipr-surface: #111111;
-  --clipr-card: #171717;
-  --clipr-border: #222222;
-  --clipr-gold: #c9a84c;
-  --clipr-gold-glow: rgba(201, 168, 76, 0.1);
-  --clipr-text: #eeebe4;
-  --clipr-text-secondary: #7a756e;
-  --clipr-text-dim: #333028;
-  --clipr-success: #4caf7a;
-  --clipr-error: #e05a5a;
-  --clipr-info: #5a9be0;
+  /* surfaces */
+  --clipr-bg: #e8eaf0;
+  --clipr-surface: #e8eaf0;
+  --clipr-card: #e8eaf0;
+  --clipr-card-bright: #edeef4;
+  --clipr-border: #d0d2dc;
+
+  /* accent (kept the `gold` token name, now indigo primary) */
+  --clipr-gold: #6366f1;
+  --clipr-gold-strong: #4f46e5;
+  --clipr-gold-soft: #818cf8;
+  --clipr-gold-glow: rgba(99, 102, 241, 0.12);
+  --clipr-tertiary: #7c3aed;
+
+  /* text */
+  --clipr-text: #2e3040;
+  --clipr-text-secondary: #585a68;
+  --clipr-text-dim: #8a8c9a;
+
+  /* status */
+  --clipr-success: #16a34a;
+  --clipr-error: #dc2626;
+  --clipr-info: #6366f1;
+
+  /* neumorphic shadow primitives */
+  --neo-dark: rgba(0, 0, 0, 0.08);
+  --neo-light: rgba(255, 255, 255, 0.6);
+  --neo-raised: 6px 6px 12px var(--neo-dark), -6px -6px 12px var(--neo-light);
+  --neo-raised-sm: 4px 4px 8px var(--neo-dark), -4px -4px 8px var(--neo-light);
+  --neo-inset: inset 4px 4px 8px rgba(0, 0, 0, 0.06),
+    inset -4px -4px 8px rgba(255, 255, 255, 0.5);
 
   /* platform brand colors */
   --brand-tiktok: #69c9d0;
@@ -22,27 +41,27 @@
   --brand-youtube: #ff3b30;
   --brand-facebook: #1877f2;
 
-  /* shadcn semantic tokens mapped to the Clipr palette (dark-only app) */
+  /* shadcn semantic tokens mapped to the neumorphic palette */
   --background: var(--clipr-bg);
   --foreground: var(--clipr-text);
   --card: var(--clipr-card);
   --card-foreground: var(--clipr-text);
-  --popover: var(--clipr-surface);
+  --popover: var(--clipr-card-bright);
   --popover-foreground: var(--clipr-text);
   --primary: var(--clipr-gold);
-  --primary-foreground: #0a0a0a;
-  --secondary: var(--clipr-surface);
+  --primary-foreground: #ffffff;
+  --secondary: var(--clipr-card-bright);
   --secondary-foreground: var(--clipr-text);
-  --muted: var(--clipr-card);
+  --muted: var(--clipr-card-bright);
   --muted-foreground: var(--clipr-text-secondary);
   --accent: var(--clipr-gold-glow);
-  --accent-foreground: var(--clipr-gold);
+  --accent-foreground: var(--clipr-gold-strong);
   --destructive: var(--clipr-error);
   --destructive-foreground: #ffffff;
   --border: var(--clipr-border);
   --input: var(--clipr-border);
-  --ring: rgba(201, 168, 76, 0.5);
-  --radius: 0.5rem;
+  --ring: rgba(99, 102, 241, 0.5);
+  --radius: 1rem;
 }
 
 @theme inline {
@@ -70,8 +89,12 @@
   --color-clipr-bg: var(--clipr-bg);
   --color-clipr-surface: var(--clipr-surface);
   --color-clipr-card: var(--clipr-card);
+  --color-clipr-card-bright: var(--clipr-card-bright);
   --color-clipr-border: var(--clipr-border);
   --color-clipr-gold: var(--clipr-gold);
+  --color-clipr-gold-strong: var(--clipr-gold-strong);
+  --color-clipr-gold-soft: var(--clipr-gold-soft);
+  --color-clipr-tertiary: var(--clipr-tertiary);
   --color-clipr-text: var(--clipr-text);
   --color-clipr-secondary: var(--clipr-text-secondary);
   --color-clipr-dim: var(--clipr-text-dim);
@@ -83,13 +106,14 @@
   --color-brand-youtube: var(--brand-youtube);
   --color-brand-facebook: var(--brand-facebook);
 
-  --font-sans: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-grotesk), "Plus Jakarta Sans", ui-sans-serif,
+    system-ui, sans-serif;
   --font-mono: var(--font-space-mono), ui-monospace, monospace;
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 4px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 8px);
 
   --animate-fade-up: fadeUp 0.3s ease both;
   --animate-caption-flash: captionFlash 0.15s ease both;
@@ -125,12 +149,14 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply outline-ring/50;
   }
   body {
     background: var(--clipr-bg);
     color: var(--clipr-text);
-    font-family: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-grotesk), "Plus Jakarta Sans", ui-sans-serif,
+      system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
   input,
   textarea,
@@ -141,12 +167,27 @@
   }
 }
 
-/* gold loading spinner for buttons */
+/* ---------- Neumorphic helpers ---------- */
+.neo-raised {
+  box-shadow: var(--neo-raised);
+}
+.neo-raised-sm {
+  box-shadow: var(--neo-raised-sm);
+}
+.neo-inset {
+  box-shadow: var(--neo-inset);
+}
+/* pressed/active nav pill */
+.neo-active {
+  box-shadow: var(--neo-inset);
+}
+
+/* indigo loading spinner for buttons */
 .clipr-spinner {
   width: 14px;
   height: 14px;
   border-radius: 9999px;
-  border: 2px solid rgba(201, 168, 76, 0.25);
+  border: 2px solid rgba(99, 102, 241, 0.25);
   border-top-color: var(--clipr-gold);
   animation: spin-gold 0.9s linear infinite;
 }
@@ -155,8 +196,8 @@
 .clipr-scanlines {
   background-image: repeating-linear-gradient(
     to bottom,
-    rgba(255, 255, 255, 0.012),
-    rgba(255, 255, 255, 0.012) 1px,
+    rgba(255, 255, 255, 0.04),
+    rgba(255, 255, 255, 0.04) 1px,
     transparent 1px,
     transparent 3px
   );

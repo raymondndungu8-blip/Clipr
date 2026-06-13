@@ -54,13 +54,13 @@ export default function DashboardLayout({
       <Toaster richColors />
 
       {/* top nav */}
-      <header className="sticky top-0 z-40 h-[54px] border-b border-clipr-border bg-clipr-bg/90 backdrop-blur">
+      <header className="sticky top-0 z-40 h-16 bg-clipr-bg neo-raised-sm">
         <div className="mx-auto flex h-full max-w-[1180px] items-center justify-between px-6">
           <Link href="/dashboard">
             <CliprLogo />
           </Link>
 
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-2 md:flex">
             {tabs.map((t) => {
               const active = isActive(t.href);
               return (
@@ -68,16 +68,13 @@ export default function DashboardLayout({
                   key={t.href}
                   href={t.href}
                   className={cn(
-                    "relative px-3 py-2 text-sm transition-colors",
+                    "rounded-full px-4 py-2 text-sm font-medium transition-all active:scale-95",
                     active
-                      ? "text-clipr-gold"
+                      ? "neo-inset text-clipr-gold"
                       : "text-clipr-secondary hover:text-clipr-text"
                   )}
                 >
                   {t.label}
-                  {active && (
-                    <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-clipr-gold" />
-                  )}
                 </Link>
               );
             })}
@@ -88,12 +85,15 @@ export default function DashboardLayout({
               <button
                 type="button"
                 aria-label="Account menu"
-                className="flex size-9 items-center justify-center rounded-full border border-clipr-border bg-clipr-surface text-clipr-secondary transition-colors hover:text-clipr-text"
+                className="flex size-10 items-center justify-center rounded-full bg-clipr-card neo-raised text-clipr-gold transition-transform active:scale-95"
               >
                 <User className="size-4" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-clipr-card">
+            <DropdownMenuContent
+              align="end"
+              className="rounded-xl border-none bg-clipr-card shadow-none neo-raised"
+            >
               <DropdownMenuItem asChild>
                 <Link href="/dashboard">Dashboard</Link>
               </DropdownMenuItem>
@@ -113,8 +113,8 @@ export default function DashboardLayout({
       </main>
 
       {/* mobile bottom tab bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-clipr-border bg-clipr-bg/95 backdrop-blur md:hidden">
-        <div className="flex items-stretch justify-around">
+      <nav className="fixed inset-x-0 bottom-0 z-40 rounded-t-2xl bg-clipr-bg shadow-[0_-6px_12px_rgba(0,0,0,0.05),0_-6px_12px_rgba(255,255,255,0.4)] md:hidden">
+        <div className="flex items-stretch justify-around px-2 py-2">
           {tabs.map((t) => {
             const active = isActive(t.href);
             return (
@@ -122,8 +122,8 @@ export default function DashboardLayout({
                 key={t.href}
                 href={t.href}
                 className={cn(
-                  "flex flex-1 flex-col items-center gap-1 py-2 text-[10px] transition-colors",
-                  active ? "text-clipr-gold" : "text-clipr-secondary"
+                  "flex flex-1 flex-col items-center gap-1 rounded-xl px-1 py-2 text-[10px] font-medium transition-all active:scale-95",
+                  active ? "neo-active text-clipr-gold" : "text-clipr-secondary"
                 )}
               >
                 <t.icon className="size-5" />

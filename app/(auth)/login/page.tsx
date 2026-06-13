@@ -41,7 +41,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-full flex-1 items-center justify-center px-6 py-12">
       <Toaster richColors />
-      <div className="animate-fade-up w-full max-w-sm rounded-xl border border-clipr-border bg-clipr-card p-8">
+      <div className="animate-fade-up w-full max-w-sm rounded-2xl bg-clipr-card neo-raised p-8">
         <div className="mb-6 flex justify-center">
           <CliprLogo />
         </div>

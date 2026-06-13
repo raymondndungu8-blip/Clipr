@@ -17,12 +17,9 @@ export default function DashboardError({
 
   return (
     <div className="flex min-h-[50vh] items-center justify-center">
-      <div className="flex max-w-md flex-col items-center gap-4 rounded-xl border border-clipr-border bg-clipr-card p-8 text-center">
-        <div
-          className="flex size-12 items-center justify-center rounded-full"
-          style={{ backgroundColor: "rgba(224,90,90,0.12)" }}
-        >
-          <AlertTriangle className="size-6 text-clipr-error" />
+      <div className="flex max-w-md flex-col items-center gap-4 rounded-2xl bg-clipr-card neo-raised p-8 text-center">
+        <div className="flex size-14 items-center justify-center rounded-full neo-inset text-clipr-error">
+          <AlertTriangle className="size-6" />
         </div>
         <h2 className="text-xl font-semibold text-clipr-text">
           Something went wrong

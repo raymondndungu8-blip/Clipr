@@ -84,7 +84,7 @@ export default function CaptionsPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
         {/* controls */}
-        <div className="flex h-fit flex-col gap-5 rounded-xl border border-clipr-border bg-clipr-card p-5">
+        <div className="flex h-fit flex-col gap-5 rounded-2xl bg-clipr-card neo-raised p-5">
           <div className="flex flex-col gap-2">
             <Label htmlFor="script">Script</Label>
             <Textarea
@@ -106,16 +106,11 @@ export default function CaptionsPage() {
                   type="button"
                   onClick={() => setStyle(s)}
                   className={cn(
-                    "rounded-md border px-3 py-2 text-left text-sm transition-all",
+                    "rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all active:scale-[0.98]",
                     style === s
-                      ? "border-clipr-gold text-clipr-text"
-                      : "border-clipr-border bg-clipr-surface text-clipr-secondary hover:text-clipr-text"
+                      ? "neo-inset text-clipr-gold"
+                      : "bg-clipr-card neo-raised-sm text-clipr-secondary hover:text-clipr-text"
                   )}
-                  style={
-                    style === s
-                      ? { backgroundColor: "var(--clipr-gold-glow)" }
-                      : undefined
-                  }
                 >
                   {s}
                 </button>
@@ -161,8 +156,8 @@ export default function CaptionsPage() {
                   Caption chunks
                 </h3>
                 <p className="text-xs text-clipr-secondary">
-                  Click a chunk to jump the preview. Highlighted chunks get a
-                  gold ring.
+                  Click a chunk to jump the preview. Highlighted chunks get an
+                  indigo ring.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {result.words.map((w, i) => (
@@ -171,10 +166,10 @@ export default function CaptionsPage() {
                       type="button"
                       onClick={() => setActiveIndex(i)}
                       className={cn(
-                        "rounded-md border px-2.5 py-1 font-mono text-xs uppercase transition-all",
+                        "rounded-full px-3 py-1 font-mono text-xs uppercase transition-all active:scale-95",
                         i === activeIndex
-                          ? "border-clipr-gold bg-clipr-gold text-[#0A0A0A]"
-                          : "border-clipr-border bg-clipr-surface text-clipr-secondary hover:text-clipr-text",
+                          ? "bg-clipr-gold text-white neo-raised-sm"
+                          : "bg-clipr-card neo-raised-sm text-clipr-secondary hover:text-clipr-text",
                         highlights.has(i) &&
                           i !== activeIndex &&
                           "ring-2 ring-clipr-gold"

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Scissors } from "lucide-react";
+import { Scissors, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Tables } from "@/types/database";
 import { Button } from "@/components/ui/button";
@@ -88,19 +88,46 @@ export default function DashboardHome() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-clipr-text">Dashboard</h1>
-          <p className="text-sm text-clipr-secondary">
-            Your latest clips and studio activity.
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/dashboard/clipper">
-            <Scissors className="size-4" />
-            Quick generate
-          </Link>
-        </Button>
+      {/* greeting */}
+      <div>
+        <h1 className="text-2xl font-semibold text-clipr-text">
+          Hello, Creator
+        </h1>
+        <p className="mt-1 text-sm font-medium text-clipr-secondary">
+          What&apos;s the plan for today?
+        </p>
+      </div>
+
+      {/* bento create buttons */}
+      <div className="grid grid-cols-2 gap-5 sm:max-w-md">
+        <Link
+          href="/dashboard/clipper"
+          className="group flex aspect-square flex-col items-center justify-center rounded-xl bg-clipr-card neo-raised p-4 transition-all active:scale-95"
+        >
+          <div className="mb-4 flex size-14 items-center justify-center rounded-full neo-inset text-clipr-gold transition-transform group-hover:scale-110">
+            <Scissors className="size-6" />
+          </div>
+          <span className="text-sm font-semibold text-clipr-text">
+            Clip video
+          </span>
+          <span className="mt-1 text-[10px] text-clipr-secondary">
+            Short-form magic
+          </span>
+        </Link>
+        <Link
+          href="/dashboard/faceless"
+          className="group flex aspect-square flex-col items-center justify-center rounded-xl bg-clipr-card neo-raised p-4 transition-all active:scale-95"
+        >
+          <div className="mb-4 flex size-14 items-center justify-center rounded-full neo-inset text-clipr-tertiary transition-transform group-hover:scale-110">
+            <Sparkles className="size-6" />
+          </div>
+          <span className="text-center text-sm font-semibold text-clipr-text">
+            AI faceless
+          </span>
+          <span className="mt-1 text-[10px] text-clipr-secondary">
+            Auto-generated
+          </span>
+        </Link>
       </div>
 
       {/* stats */}
@@ -112,9 +139,11 @@ export default function DashboardHome() {
         ].map((s) => (
           <div
             key={s.label}
-            className="rounded-xl border border-clipr-border bg-clipr-card p-5"
+            className="rounded-xl bg-clipr-card neo-inset p-5"
           >
-            <p className="text-sm text-clipr-secondary">{s.label}</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-clipr-secondary">
+              {s.label}
+            </p>
             {loading ? (
               <Skeleton className="mt-2 h-8 w-16" />
             ) : (

@@ -50,16 +50,15 @@ export default function PlatformPill({
       onClick={() => onToggle(platform)}
       aria-pressed={active}
       className={cn(
-        "rounded-[20px] border px-3.5 py-1.5 text-sm transition-all duration-150 disabled:opacity-50",
+        "rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-150 active:scale-95 disabled:opacity-50",
         active
-          ? "text-clipr-text"
-          : "border-clipr-border bg-clipr-surface text-clipr-secondary hover:text-clipr-text"
+          ? "neo-inset"
+          : "bg-clipr-card neo-raised-sm text-clipr-secondary hover:text-clipr-text"
       )}
       style={
         active
           ? {
-              backgroundColor: `rgba(${rgb}, 0.10)`,
-              borderColor: color,
+              backgroundColor: `rgba(${rgb}, 0.12)`,
               color,
             }
           : undefined

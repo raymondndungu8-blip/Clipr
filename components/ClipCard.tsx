@@ -31,7 +31,7 @@ export default function ClipCard({ clip }: { clip: Clip }) {
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-clipr-border bg-clipr-card p-4">
+    <div className="flex flex-col gap-4 rounded-xl bg-clipr-card neo-raised p-4">
       <div className="flex justify-center">
         <VideoPreview
           hook={clip.hook ?? undefined}
@@ -60,7 +60,7 @@ export default function ClipCard({ clip }: { clip: Clip }) {
           {hashtags.map((tag) => (
             <span
               key={tag}
-              className="rounded-[20px] border border-clipr-border bg-clipr-surface px-2.5 py-0.5 font-mono text-xs text-clipr-secondary"
+              className="rounded-full bg-clipr-card neo-inset px-2.5 py-0.5 font-mono text-xs text-clipr-secondary"
             >
               {tag.startsWith("#") ? tag : `#${tag}`}
             </span>
@@ -72,7 +72,7 @@ export default function ClipCard({ clip }: { clip: Clip }) {
         <Button
           variant="outline"
           size="sm"
-          className="flex-1 border-clipr-gold text-clipr-gold hover:text-clipr-gold"
+          className="flex-1 text-clipr-gold hover:text-clipr-gold"
           onClick={copyCaption}
         >
           <Copy className="size-3.5" />

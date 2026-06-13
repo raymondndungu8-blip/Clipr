@@ -30,21 +30,15 @@ export default function ProgressSteps({
             <div className="flex items-center gap-3 md:flex-col md:gap-2">
               <span
                 className={cn(
-                  "flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-mono transition-colors",
-                  isDone &&
-                    "border-clipr-gold bg-clipr-gold text-[#0A0A0A]",
-                  isActive && "border-clipr-gold text-clipr-gold",
-                  isFailed && "border-clipr-error text-clipr-error",
+                  "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-mono transition-colors",
+                  isDone && "bg-clipr-gold text-white neo-raised-sm",
+                  isActive && "neo-inset text-clipr-gold",
+                  isFailed && "neo-inset text-clipr-error",
                   !isDone &&
                     !isActive &&
                     !isFailed &&
-                    "border-clipr-border bg-clipr-card text-clipr-secondary"
+                    "neo-inset text-clipr-secondary"
                 )}
-                style={
-                  isActive
-                    ? { boxShadow: "0 0 0 4px var(--clipr-gold-glow)" }
-                    : undefined
-                }
               >
                 {isDone ? (
                   <Check className="size-3.5" />

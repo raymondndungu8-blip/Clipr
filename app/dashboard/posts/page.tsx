@@ -45,18 +45,17 @@ function PlatformTag({ platform }: { platform: string }) {
   const color = PLATFORM_COLORS[platform as Platform];
   if (!color) {
     return (
-      <span className="rounded-[20px] border border-clipr-border bg-clipr-surface px-2 py-0.5 text-xs text-clipr-secondary">
+      <span className="rounded-full bg-clipr-card neo-inset px-2.5 py-0.5 text-xs text-clipr-secondary">
         {platform}
       </span>
     );
   }
   return (
     <span
-      className="rounded-[20px] border px-2 py-0.5 text-xs"
+      className="rounded-full px-2.5 py-0.5 text-xs font-medium neo-inset"
       style={{
-        borderColor: color,
         color,
-        backgroundColor: `rgba(${hexToRgb(color)}, 0.10)`,
+        backgroundColor: `rgba(${hexToRgb(color)}, 0.12)`,
       }}
     >
       {platform}
@@ -172,7 +171,7 @@ export default function PostsPage() {
           hint="Try clearing the platform or status filter."
         />
       ) : (
-        <div className="rounded-xl border border-clipr-border bg-clipr-card p-2">
+        <div className="rounded-2xl bg-clipr-card neo-raised p-2">
           <Table>
             <TableHeader>
               <TableRow>
@@ -187,7 +186,7 @@ export default function PostsPage() {
               {filtered.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell>
-                    <div className="flex size-10 items-center justify-center rounded-md border border-clipr-border bg-clipr-surface text-clipr-secondary">
+                    <div className="flex size-10 items-center justify-center rounded-lg neo-inset text-clipr-gold">
                       <ImageIcon className="size-4" />
                     </div>
                   </TableCell>

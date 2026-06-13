@@ -181,7 +181,7 @@ export default function ClipperPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
         {/* controls */}
-        <div className="flex h-fit flex-col gap-5 rounded-xl border border-clipr-border bg-clipr-card p-5">
+        <div className="flex h-fit flex-col gap-5 rounded-2xl bg-clipr-card neo-raised p-5">
           <div className="flex flex-col gap-2">
             <Label htmlFor="url">Video URL</Label>
             <Input
@@ -198,9 +198,9 @@ export default function ClipperPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="h-px flex-1 bg-clipr-border" />
+            <span className="h-px flex-1 bg-clipr-border/60" />
             <span className="font-mono text-xs text-clipr-secondary">— OR —</span>
-            <span className="h-px flex-1 bg-clipr-border" />
+            <span className="h-px flex-1 bg-clipr-border/60" />
           </div>
 
           <div className="flex flex-col gap-2">
@@ -227,16 +227,11 @@ export default function ClipperPage() {
                   type="button"
                   onClick={() => setStyle(s)}
                   className={cn(
-                    "rounded-[20px] border px-3 py-1.5 text-sm transition-all",
+                    "rounded-full px-4 py-1.5 text-sm font-medium transition-all active:scale-95",
                     style === s
-                      ? "border-clipr-gold text-clipr-gold"
-                      : "border-clipr-border bg-clipr-surface text-clipr-secondary hover:text-clipr-text"
+                      ? "neo-inset text-clipr-gold"
+                      : "bg-clipr-card neo-raised-sm text-clipr-secondary hover:text-clipr-text"
                   )}
-                  style={
-                    style === s
-                      ? { backgroundColor: "rgba(201,168,76,0.18)" }
-                      : undefined
-                  }
                 >
                   {s}
                 </button>
@@ -274,7 +269,7 @@ export default function ClipperPage() {
           )}
 
           {showProgress && (
-            <div className="rounded-xl border border-clipr-border bg-clipr-card p-5">
+            <div className="rounded-2xl bg-clipr-card neo-raised p-5">
               <ProgressSteps
                 steps={STEPS}
                 current={stepIndex}

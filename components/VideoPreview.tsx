@@ -73,9 +73,10 @@ export default function VideoPreview({
   return (
     <div className={className} style={{ maxWidth: 300, width: "100%" }}>
       <div
-        className="relative w-full overflow-hidden rounded-xl border border-clipr-border"
-        style={{ paddingTop: "177.78%" }}
+        className="neo-inset relative w-full overflow-hidden rounded-xl p-1.5"
+        style={{ paddingTop: "calc(177.78% + 0.75rem)" }}
       >
+        <div className="absolute inset-1.5 overflow-hidden rounded-lg">
         {videoUrl ? (
           <video
             src={videoUrl}
@@ -118,12 +119,12 @@ export default function VideoPreview({
                   width: 34,
                   height: 34,
                   backgroundColor: "var(--clipr-gold)",
-                  boxShadow: "0 0 24px 4px rgba(201,168,76,0.45)",
+                  boxShadow: "0 0 24px 4px rgba(99,102,241,0.45)",
                 }}
               >
                 <Play
-                  fill="#0A0A0A"
-                  stroke="#0A0A0A"
+                  fill="#FFFFFF"
+                  stroke="#FFFFFF"
                   style={{ width: 14, height: 14, marginLeft: 2 }}
                 />
               </div>
@@ -170,6 +171,7 @@ export default function VideoPreview({
             )}
           </>
         )}
+        </div>
       </div>
     </div>
   );

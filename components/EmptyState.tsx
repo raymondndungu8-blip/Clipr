@@ -8,9 +8,11 @@ type EmptyStateProps = {
 
 export default function EmptyState({ title, hint, children }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-clipr-border bg-clipr-card/40 px-6 py-14 text-center">
-      <CliprMark size={36} muted />
-      <p className="text-lg text-clipr-text">{title}</p>
+    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl bg-clipr-card neo-inset px-6 py-14 text-center">
+      <div className="flex size-16 items-center justify-center rounded-full neo-raised">
+        <CliprMark size={32} muted />
+      </div>
+      <p className="text-lg font-semibold text-clipr-text">{title}</p>
       {hint && (
         <p className="max-w-sm text-sm text-clipr-secondary">{hint}</p>
       )}
