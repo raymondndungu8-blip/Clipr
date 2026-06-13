@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, X } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 type ProgressStepsProps = {
@@ -15,6 +16,7 @@ export default function ProgressSteps({
   current,
   failed = false,
 }: ProgressStepsProps) {
+  const reduce = useReducedMotion();
   return (
     <ol className="flex flex-col gap-3 md:flex-row md:items-start md:gap-2">
       {steps.map((label, i) => {
@@ -23,15 +25,18 @@ export default function ProgressSteps({
         const isFailed = i === current && failed;
 
         return (
-          <li
+          <motion.li
             key={label}
+            initial={reduce ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: i * 0.06, ease: [0.22, 1, 0.36, 1] }}
             className="flex flex-1 items-center gap-3 md:flex-col md:items-center md:text-center"
           >
             <div className="flex items-center gap-3 md:flex-col md:gap-2">
               <span
                 className={cn(
                   "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-mono transition-colors",
-                  isDone && "bg-clipr-gold text-white neo-raised-sm",
+                  isDone && "bg-clipr-gold text-primary-foreground neo-raised-sm",
                   isActive && "neo-inset text-clipr-gold",
                   isFailed && "neo-inset text-clipr-error",
                   !isDone &&
@@ -63,7 +68,7 @@ export default function ProgressSteps({
                 {label}
               </span>
             </div>
-          </li>
+          </motion.li>
         );
       })}
     </ol>

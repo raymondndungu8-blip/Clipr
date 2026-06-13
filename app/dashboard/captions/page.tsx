@@ -12,6 +12,13 @@ import VideoPreview, {
 } from "@/components/VideoPreview";
 import EmptyState from "@/components/EmptyState";
 import RateLimitBanner from "@/components/RateLimitBanner";
+import {
+  PageTransition,
+  FadeIn,
+  ScaleIn,
+  Stagger,
+  StaggerItem,
+} from "@/components/motion";
 import { apiPost, ApiError } from "@/components/lib/api";
 
 type CaptionResult = {
@@ -72,7 +79,7 @@ export default function CaptionsPage() {
   const highlights = new Set(result?.highlights ?? []);
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageTransition className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold text-clipr-text">
           Caption animator
@@ -84,7 +91,7 @@ export default function CaptionsPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
         {/* controls */}
-        <div className="flex h-fit flex-col gap-5 rounded-2xl bg-clipr-card neo-raised p-5">
+        <FadeIn className="flex h-fit flex-col gap-5 rounded-2xl bg-clipr-card neo-raised p-5">
           <div className="flex flex-col gap-2">
             <Label htmlFor="script">Script</Label>
             <Textarea
@@ -122,7 +129,7 @@ export default function CaptionsPage() {
             {loading && <span className="clipr-spinner" />}
             {loading ? "Animating…" : "Animate captions"}
           </Button>
-        </div>
+        </FadeIn>
 
         {/* output */}
         <div className="flex flex-col gap-5">
@@ -141,49 +148,52 @@ export default function CaptionsPage() {
               />
             )
           ) : (
-            <div className="animate-fade-up grid grid-cols-1 gap-5 md:grid-cols-[300px_1fr]">
-              <VideoPreview
-                captions={result.words}
-                captionStyle={style}
-                activeIndex={activeIndex}
-                duration={`${Math.round(
-                  (result.words.length * (result.timing || 1200)) / 1000
-                )}s`}
-              />
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-[300px_1fr]">
+              <ScaleIn>
+                <VideoPreview
+                  captions={result.words}
+                  captionStyle={style}
+                  activeIndex={activeIndex}
+                  duration={`${Math.round(
+                    (result.words.length * (result.timing || 1200)) / 1000
+                  )}s`}
+                />
+              </ScaleIn>
 
-              <div className="flex flex-col gap-3">
+              <FadeIn delay={0.1} className="flex flex-col gap-3">
                 <h3 className="text-sm font-semibold text-clipr-text">
                   Caption chunks
                 </h3>
                 <p className="text-xs text-clipr-secondary">
-                  Click a chunk to jump the preview. Highlighted chunks get an
-                  indigo ring.
+                  Click a chunk to jump the preview. Highlighted chunks get a
+                  blue ring.
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <Stagger className="flex flex-wrap gap-2">
                   {result.words.map((w, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setActiveIndex(i)}
-                      className={cn(
-                        "rounded-full px-3 py-1 font-mono text-xs uppercase transition-all active:scale-95",
-                        i === activeIndex
-                          ? "bg-clipr-gold text-white neo-raised-sm"
-                          : "bg-clipr-card neo-raised-sm text-clipr-secondary hover:text-clipr-text",
-                        highlights.has(i) &&
-                          i !== activeIndex &&
-                          "ring-2 ring-clipr-gold"
-                      )}
-                    >
-                      {w}
-                    </button>
+                    <StaggerItem key={i}>
+                      <button
+                        type="button"
+                        onClick={() => setActiveIndex(i)}
+                        className={cn(
+                          "rounded-full px-3 py-1 font-mono text-xs uppercase transition-all active:scale-95",
+                          i === activeIndex
+                            ? "bg-clipr-gold text-primary-foreground neo-raised-sm"
+                            : "bg-clipr-card neo-raised-sm text-clipr-secondary hover:text-clipr-text",
+                          highlights.has(i) &&
+                            i !== activeIndex &&
+                            "ring-2 ring-clipr-gold"
+                        )}
+                      >
+                        {w}
+                      </button>
+                    </StaggerItem>
                   ))}
-                </div>
-              </div>
+                </Stagger>
+              </FadeIn>
             </div>
           )}
         </div>
       </div>
-    </div>
+    </PageTransition>
   );
 }

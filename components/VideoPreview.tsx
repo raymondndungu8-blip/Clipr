@@ -27,7 +27,7 @@ const STYLE_COLORS: Record<CaptionStyle, { bg: string; fg: string }> = {
 };
 
 const DEFAULT_GRADIENT =
-  "linear-gradient(160deg, #1c1810 0%, #0a0a0a 55%, #14110a 100%)";
+  "linear-gradient(160deg, #14213d 0%, #0a0e1a 55%, #0e1b33 100%)";
 
 type VideoPreviewProps = {
   hook?: string;
@@ -73,7 +73,7 @@ export default function VideoPreview({
   return (
     <div className={className} style={{ maxWidth: 300, width: "100%" }}>
       <div
-        className="neo-inset relative w-full overflow-hidden rounded-xl p-1.5"
+        className="neo-inset relative w-full overflow-hidden rounded-2xl p-1.5 ring-1 ring-clipr-gold/15"
         style={{ paddingTop: "calc(177.78% + 0.75rem)" }}
       >
         <div className="absolute inset-1.5 overflow-hidden rounded-lg">
@@ -119,7 +119,7 @@ export default function VideoPreview({
                   width: 34,
                   height: 34,
                   backgroundColor: "var(--clipr-gold)",
-                  boxShadow: "0 0 24px 4px rgba(99,102,241,0.45)",
+                  boxShadow: "0 0 24px 4px rgba(61,123,255,0.5)",
                 }}
               >
                 <Play

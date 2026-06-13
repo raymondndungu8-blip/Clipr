@@ -15,6 +15,13 @@ import {
 } from "@/components/ui/select";
 import EmptyState from "@/components/EmptyState";
 import RateLimitBanner from "@/components/RateLimitBanner";
+import {
+  PageTransition,
+  FadeIn,
+  Stagger,
+  StaggerItem,
+  MotionCard,
+} from "@/components/motion";
 import { apiPost, ApiError } from "@/components/lib/api";
 
 const PLATFORMS = [
@@ -94,7 +101,7 @@ export default function HooksPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageTransition className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold text-clipr-text">Hook writer</h1>
         <p className="text-sm text-clipr-secondary">
@@ -104,7 +111,7 @@ export default function HooksPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
         {/* controls */}
-        <div className="flex h-fit flex-col gap-5 rounded-2xl bg-clipr-card neo-raised p-5">
+        <FadeIn className="flex h-fit flex-col gap-5 rounded-2xl bg-clipr-card neo-raised p-5">
           <div className="flex flex-col gap-2">
             <Label htmlFor="topic">Topic</Label>
             <Input
@@ -160,7 +167,7 @@ export default function HooksPage() {
             {loading && <span className="clipr-spinner" />}
             {loading ? "Writing…" : "Write 6 hooks"}
           </Button>
-        </div>
+        </FadeIn>
 
         {/* output */}
         <div className="flex flex-col gap-5">
@@ -179,43 +186,41 @@ export default function HooksPage() {
               />
             )
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Stagger className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {hooks.map((h, i) => (
-                <div
-                  key={i}
-                  className="animate-fade-up flex flex-col gap-3 rounded-xl bg-clipr-card neo-raised p-5"
-                  style={{ animationDelay: `${i * 0.08}s` }}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="rounded-full neo-inset px-2.5 py-0.5 text-[10px] font-bold uppercase text-clipr-gold">
-                      {h.type}
-                    </span>
-                    <span
-                      className="font-mono text-sm font-bold"
-                      style={{ color: strengthColor(h.strength) }}
+                <StaggerItem key={i}>
+                  <MotionCard className="flex h-full flex-col gap-3 rounded-2xl bg-clipr-card neo-raised p-5">
+                    <div className="flex items-center justify-between">
+                      <span className="rounded-full neo-inset px-2.5 py-0.5 text-[10px] font-bold uppercase text-clipr-gold">
+                        {h.type}
+                      </span>
+                      <span
+                        className="font-mono text-sm font-bold"
+                        style={{ color: strengthColor(h.strength) }}
+                      >
+                        {h.strength}/10
+                      </span>
+                    </div>
+                    <p className="text-lg font-semibold leading-snug text-clipr-text">
+                      {h.hook}
+                    </p>
+                    <p className="text-sm text-clipr-secondary">{h.why}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-auto w-fit"
+                      onClick={() => copyHook(h.hook)}
                     >
-                      {h.strength}/10
-                    </span>
-                  </div>
-                  <p className="text-lg font-semibold leading-snug text-clipr-text">
-                    {h.hook}
-                  </p>
-                  <p className="text-sm text-clipr-secondary">{h.why}</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-auto w-fit text-clipr-gold hover:text-clipr-gold"
-                    onClick={() => copyHook(h.hook)}
-                  >
-                    <Copy className="size-3.5" />
-                    Copy
-                  </Button>
-                </div>
+                      <Copy className="size-3.5" />
+                      Copy
+                    </Button>
+                  </MotionCard>
+                </StaggerItem>
               ))}
-            </div>
+            </Stagger>
           )}
         </div>
       </div>
-    </div>
+    </PageTransition>
   );
 }

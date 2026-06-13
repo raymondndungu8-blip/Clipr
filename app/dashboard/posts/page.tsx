@@ -22,6 +22,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { PLATFORM_COLORS, type Platform } from "@/components/PlatformPill";
 import EmptyState from "@/components/EmptyState";
+import { PageTransition, FadeIn, motion } from "@/components/motion";
 
 type Post = Tables<"posts">;
 type StatusFilter = "all" | "queued" | "posted" | "failed";
@@ -113,8 +114,8 @@ export default function PostsPage() {
   }, [posts, statusFilter, platformFilter]);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <PageTransition className="flex flex-col gap-6">
+      <FadeIn className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-clipr-text">Posts</h1>
           <p className="text-sm text-clipr-secondary">
@@ -152,7 +153,7 @@ export default function PostsPage() {
             </SelectContent>
           </Select>
         </div>
-      </div>
+      </FadeIn>
 
       {loading ? (
         <div className="flex flex-col gap-2">
@@ -183,8 +184,18 @@ export default function PostsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((p) => (
-                <TableRow key={p.id}>
+              {filtered.map((p, i) => (
+                <motion.tr
+                  key={p.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    duration: 0.3,
+                    delay: Math.min(i * 0.04, 0.4),
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                  className="border-b border-clipr-border/60 transition-colors hover:bg-clipr-card-bright/40"
+                >
                   <TableCell>
                     <div className="flex size-10 items-center justify-center rounded-lg neo-inset text-clipr-gold">
                       <ImageIcon className="size-4" />
@@ -215,12 +226,12 @@ export default function PostsPage() {
                   <TableCell className="font-mono text-xs text-clipr-secondary">
                     {formatDate(p.created_at)}
                   </TableCell>
-                </TableRow>
+                </motion.tr>
               ))}
             </TableBody>
           </Table>
         </div>
       )}
-    </div>
+    </PageTransition>
   );
 }

@@ -13,6 +13,13 @@ import ProgressSteps from "@/components/ProgressSteps";
 import ClipCard from "@/components/ClipCard";
 import EmptyState from "@/components/EmptyState";
 import RateLimitBanner from "@/components/RateLimitBanner";
+import {
+  PageTransition,
+  FadeIn,
+  ScaleIn,
+  Stagger,
+  StaggerItem,
+} from "@/components/motion";
 import { apiPost, ApiError, type FieldIssues } from "@/components/lib/api";
 
 type Clip = Tables<"clips">;
@@ -171,7 +178,7 @@ export default function ClipperPage() {
   const showProgress = loading || jobStatus === "failed";
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageTransition className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold text-clipr-text">URL clipper</h1>
         <p className="text-sm text-clipr-secondary">
@@ -181,7 +188,7 @@ export default function ClipperPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
         {/* controls */}
-        <div className="flex h-fit flex-col gap-5 rounded-2xl bg-clipr-card neo-raised p-5">
+        <FadeIn className="flex h-fit flex-col gap-5 rounded-2xl bg-clipr-card neo-raised p-5">
           <div className="flex flex-col gap-2">
             <Label htmlFor="url">Video URL</Label>
             <Input
@@ -257,7 +264,7 @@ export default function ClipperPage() {
             {loading && <span className="clipr-spinner" />}
             {loading ? "Generating…" : "Generate clips"}
           </Button>
-        </div>
+        </FadeIn>
 
         {/* output */}
         <div className="flex flex-col gap-5">
@@ -269,27 +276,23 @@ export default function ClipperPage() {
           )}
 
           {showProgress && (
-            <div className="rounded-2xl bg-clipr-card neo-raised p-5">
+            <ScaleIn className="rounded-2xl bg-clipr-card neo-raised p-5">
               <ProgressSteps
                 steps={STEPS}
                 current={stepIndex}
                 failed={jobStatus === "failed"}
               />
-            </div>
+            </ScaleIn>
           )}
 
           {clips.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {clips.map((clip, i) => (
-                <div
-                  key={clip.id}
-                  className="animate-fade-up"
-                  style={{ animationDelay: `${i * 0.08}s` }}
-                >
+            <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {clips.map((clip) => (
+                <StaggerItem key={clip.id}>
                   <ClipCard clip={clip} />
-                </div>
+                </StaggerItem>
               ))}
-            </div>
+            </Stagger>
           ) : (
             !showProgress && (
               <EmptyState
@@ -300,6 +303,6 @@ export default function ClipperPage() {
           )}
         </div>
       </div>
-    </div>
+    </PageTransition>
   );
 }

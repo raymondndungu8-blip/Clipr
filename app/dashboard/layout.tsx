@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import CliprLogo from "@/components/CliprLogo";
+import { motion } from "@/components/motion";
 import { Toaster } from "@/components/ui/sonner";
 import {
   DropdownMenu,
@@ -54,13 +55,13 @@ export default function DashboardLayout({
       <Toaster richColors />
 
       {/* top nav */}
-      <header className="sticky top-0 z-40 h-16 bg-clipr-bg neo-raised-sm">
+      <header className="sticky top-0 z-40 h-16 bg-clipr-bg/80 backdrop-blur-md border-b border-clipr-border/60">
         <div className="mx-auto flex h-full max-w-[1180px] items-center justify-between px-6">
           <Link href="/dashboard">
             <CliprLogo />
           </Link>
 
-          <nav className="hidden items-center gap-2 md:flex">
+          <nav className="hidden items-center gap-1 md:flex">
             {tabs.map((t) => {
               const active = isActive(t.href);
               return (
@@ -68,13 +69,20 @@ export default function DashboardLayout({
                   key={t.href}
                   href={t.href}
                   className={cn(
-                    "rounded-full px-4 py-2 text-sm font-medium transition-all active:scale-95",
+                    "relative rounded-full px-4 py-2 text-sm font-medium transition-colors active:scale-95",
                     active
-                      ? "neo-inset text-clipr-gold"
+                      ? "text-clipr-gold"
                       : "text-clipr-secondary hover:text-clipr-text"
                   )}
                 >
-                  {t.label}
+                  {active && (
+                    <motion.span
+                      layoutId="nav-active"
+                      className="absolute inset-0 rounded-full neo-active"
+                      transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                    />
+                  )}
+                  <span className="relative z-10">{t.label}</span>
                 </Link>
               );
             })}
@@ -113,7 +121,7 @@ export default function DashboardLayout({
       </main>
 
       {/* mobile bottom tab bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 rounded-t-2xl bg-clipr-bg shadow-[0_-6px_12px_rgba(0,0,0,0.05),0_-6px_12px_rgba(255,255,255,0.4)] md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 rounded-t-2xl border-t border-clipr-border bg-clipr-surface/95 backdrop-blur-md shadow-[0_-6px_20px_rgba(0,0,0,0.4)] md:hidden">
         <div className="flex items-stretch justify-around px-2 py-2">
           {tabs.map((t) => {
             const active = isActive(t.href);

@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { Eye, EyeOff, type LucideIcon } from "lucide-react";
 import { CliprMark } from "@/components/CliprLogo";
+import { ScaleIn } from "@/components/motion";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +32,7 @@ export function AuthCard({
         <div className="absolute bottom-10 left-0 h-56 w-56 -translate-x-1/3 rounded-full bg-clipr-gold-soft/15 blur-3xl" />
       </div>
 
-      <div className="animate-fade-up relative w-full max-w-sm rounded-3xl bg-clipr-card neo-raised p-8">
+      <ScaleIn className="relative w-full max-w-sm rounded-3xl bg-clipr-card neo-raised p-8 glow-blue">
         <div className="mb-6 flex flex-col items-center gap-4">
           <div className="flex size-16 items-center justify-center rounded-2xl neo-inset">
             <CliprMark size={32} />
@@ -61,7 +62,7 @@ export function AuthCard({
         <div className="mt-6 text-center text-sm text-clipr-secondary">
           {footer}
         </div>
-      </div>
+      </ScaleIn>
     </div>
   );
 }

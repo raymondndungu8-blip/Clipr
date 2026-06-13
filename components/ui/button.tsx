@@ -9,15 +9,16 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-clipr-gold text-white neo-raised hover:opacity-90",
+        default:
+          "bg-clipr-gold text-primary-foreground neo-raised hover:bg-clipr-gold-strong hover:glow-blue",
         destructive:
           "bg-destructive text-white neo-raised hover:opacity-90",
         outline:
-          "bg-clipr-card text-clipr-text neo-raised hover:opacity-90",
+          "bg-clipr-card text-clipr-text neo-raised hover:border-clipr-gold hover:text-clipr-gold",
         secondary:
-          "bg-clipr-card text-clipr-text neo-raised hover:opacity-90",
+          "bg-clipr-card-bright text-clipr-text neo-raised hover:bg-clipr-card-bright/80",
         ghost:
-          "text-clipr-secondary hover:text-clipr-gold",
+          "text-clipr-secondary hover:text-clipr-gold hover:bg-clipr-card-bright/60",
         link: "text-clipr-gold underline-offset-4 hover:underline",
       },
       size: {

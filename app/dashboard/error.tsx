@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ScaleIn } from "@/components/motion";
 
 export default function DashboardError({
   error,
@@ -17,7 +18,7 @@ export default function DashboardError({
 
   return (
     <div className="flex min-h-[50vh] items-center justify-center">
-      <div className="flex max-w-md flex-col items-center gap-4 rounded-2xl bg-clipr-card neo-raised p-8 text-center">
+      <ScaleIn className="flex max-w-md flex-col items-center gap-4 rounded-2xl bg-clipr-card neo-raised p-8 text-center">
         <div className="flex size-14 items-center justify-center rounded-full neo-inset text-clipr-error">
           <AlertTriangle className="size-6" />
         </div>
@@ -29,7 +30,7 @@ export default function DashboardError({
           come back in a bit.
         </p>
         <Button onClick={reset}>Try again</Button>
-      </div>
+      </ScaleIn>
     </div>
   );
 }

@@ -27,6 +27,7 @@ import VideoPreview from "@/components/VideoPreview";
 import EmptyState from "@/components/EmptyState";
 import RateLimitBanner from "@/components/RateLimitBanner";
 import PostDialog from "@/components/PostDialog";
+import { PageTransition, FadeIn, ScaleIn, motion } from "@/components/motion";
 import { apiPost, ApiError } from "@/components/lib/api";
 
 const NICHES = [
@@ -136,7 +137,7 @@ export default function FacelessPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageTransition className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-semibold text-clipr-text">
           Faceless video generator
@@ -148,7 +149,7 @@ export default function FacelessPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
         {/* controls */}
-        <div className="flex h-fit flex-col gap-5 rounded-2xl bg-clipr-card neo-raised p-5">
+        <FadeIn className="flex h-fit flex-col gap-5 rounded-2xl bg-clipr-card neo-raised p-5">
           <div className="flex flex-col gap-2">
             <Label htmlFor="topic">Topic</Label>
             <Input
@@ -233,11 +234,15 @@ export default function FacelessPage() {
             </div>
           </div>
 
-          <Button onClick={onGenerate} disabled={loading} className="mt-1">
+          <Button
+            onClick={onGenerate}
+            disabled={loading}
+            className="mt-1 glow-blue"
+          >
             {loading && <span className="clipr-spinner" />}
             {loading ? "Generating…" : "Generate video"}
           </Button>
-        </div>
+        </FadeIn>
 
         {/* output */}
         <div className="flex flex-col gap-5">
@@ -256,14 +261,16 @@ export default function FacelessPage() {
               />
             )
           ) : (
-            <div className="animate-fade-up flex flex-col gap-5">
+            <FadeIn className="flex flex-col gap-5">
               <div className="grid grid-cols-1 gap-5 md:grid-cols-[300px_1fr]">
-                <VideoPreview
-                  hook={script.hook}
-                  captions={script.captions}
-                  duration={duration}
-                  bgGradient={script.bgGradient}
-                />
+                <ScaleIn>
+                  <VideoPreview
+                    hook={script.hook}
+                    captions={script.captions}
+                    duration={duration}
+                    bgGradient={script.bgGradient}
+                  />
+                </ScaleIn>
                 <div className="flex flex-col gap-3">
                   <h2 className="text-lg font-semibold text-clipr-text">
                     {script.title}
@@ -318,7 +325,17 @@ export default function FacelessPage() {
                   </TableHeader>
                   <TableBody>
                     {script.script.map((sc, i) => (
-                      <TableRow key={i}>
+                      <motion.tr
+                        key={i}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{
+                          duration: 0.3,
+                          delay: i * 0.05,
+                          ease: [0.22, 1, 0.36, 1],
+                        }}
+                        className="border-b border-clipr-border/60 transition-colors hover:bg-clipr-card-bright/40"
+                      >
                         <TableCell className="font-mono text-clipr-gold">
                           {sc.scene}
                         </TableCell>
@@ -334,12 +351,12 @@ export default function FacelessPage() {
                         <TableCell className="font-mono text-xs text-clipr-secondary">
                           {sc.duration}
                         </TableCell>
-                      </TableRow>
+                      </motion.tr>
                     ))}
                   </TableBody>
                 </Table>
               </div>
-            </div>
+            </FadeIn>
           )}
         </div>
       </div>
@@ -359,6 +376,6 @@ export default function FacelessPage() {
           defaultPlatforms={platforms}
         />
       )}
-    </div>
+    </PageTransition>
   );
 }

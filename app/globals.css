@@ -1,39 +1,42 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* ---------- Clipr design tokens — Stitch "Silk" neumorphic light theme ---------- */
+/* ---------- Clipr design tokens — dark navy + electric blue ---------- */
 :root {
-  /* surfaces */
-  --clipr-bg: #e8eaf0;
-  --clipr-surface: #e8eaf0;
-  --clipr-card: #e8eaf0;
-  --clipr-card-bright: #edeef4;
-  --clipr-border: #d0d2dc;
+  /* surfaces (deep navy, layered by lightness) */
+  --clipr-bg: #0a0e1a;
+  --clipr-surface: #0e1424;
+  --clipr-card: #141b2e;
+  --clipr-card-bright: #1a2238;
+  --clipr-border: #232c44;
+  --clipr-border-strong: #2f3a59;
 
-  /* accent (kept the `gold` token name, now indigo primary) */
-  --clipr-gold: #6366f1;
-  --clipr-gold-strong: #4f46e5;
-  --clipr-gold-soft: #818cf8;
-  --clipr-gold-glow: rgba(99, 102, 241, 0.12);
-  --clipr-tertiary: #7c3aed;
+  /* accent — electric blue (token still named `gold` for back-compat) */
+  --clipr-gold: #3d7bff;
+  --clipr-gold-strong: #2563eb;
+  --clipr-gold-soft: #6ba0ff;
+  --clipr-gold-glow: rgba(61, 123, 255, 0.16);
+  --clipr-tertiary: #22d3ee;
 
   /* text */
-  --clipr-text: #2e3040;
-  --clipr-text-secondary: #585a68;
-  --clipr-text-dim: #8a8c9a;
+  --clipr-text: #e7ecf7;
+  --clipr-text-secondary: #97a3bd;
+  --clipr-text-dim: #5d6a88;
 
   /* status */
-  --clipr-success: #16a34a;
-  --clipr-error: #dc2626;
-  --clipr-info: #6366f1;
+  --clipr-success: #34d399;
+  --clipr-error: #f87171;
+  --clipr-info: #38bdf8;
 
-  /* neumorphic shadow primitives */
-  --neo-dark: rgba(0, 0, 0, 0.08);
-  --neo-light: rgba(255, 255, 255, 0.6);
-  --neo-raised: 6px 6px 12px var(--neo-dark), -6px -6px 12px var(--neo-light);
-  --neo-raised-sm: 4px 4px 8px var(--neo-dark), -4px -4px 8px var(--neo-light);
-  --neo-inset: inset 4px 4px 8px rgba(0, 0, 0, 0.06),
-    inset -4px -4px 8px rgba(255, 255, 255, 0.5);
+  /* gradients & glow */
+  --clipr-gradient: linear-gradient(135deg, #3d7bff 0%, #22d3ee 100%);
+  --clipr-gradient-violet: linear-gradient(135deg, #6366f1 0%, #3d7bff 100%);
+  --neo-raised: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--clipr-border);
+  --neo-raised-sm: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--clipr-border);
+  --neo-inset: inset 0 1px 2px rgba(0, 0, 0, 0.45),
+    0 0 0 1px var(--clipr-border);
+  --glow-blue: 0 0 0 1px rgba(61, 123, 255, 0.5),
+    0 8px 28px rgba(61, 123, 255, 0.25);
 
   /* platform brand colors */
   --brand-tiktok: #69c9d0;
@@ -41,27 +44,27 @@
   --brand-youtube: #ff3b30;
   --brand-facebook: #1877f2;
 
-  /* shadcn semantic tokens mapped to the neumorphic palette */
+  /* shadcn semantic tokens */
   --background: var(--clipr-bg);
   --foreground: var(--clipr-text);
   --card: var(--clipr-card);
   --card-foreground: var(--clipr-text);
-  --popover: var(--clipr-card-bright);
+  --popover: var(--clipr-surface);
   --popover-foreground: var(--clipr-text);
   --primary: var(--clipr-gold);
-  --primary-foreground: #ffffff;
+  --primary-foreground: #061021;
   --secondary: var(--clipr-card-bright);
   --secondary-foreground: var(--clipr-text);
   --muted: var(--clipr-card-bright);
   --muted-foreground: var(--clipr-text-secondary);
   --accent: var(--clipr-gold-glow);
-  --accent-foreground: var(--clipr-gold-strong);
+  --accent-foreground: var(--clipr-gold-soft);
   --destructive: var(--clipr-error);
-  --destructive-foreground: #ffffff;
+  --destructive-foreground: #1a0606;
   --border: var(--clipr-border);
   --input: var(--clipr-border);
-  --ring: rgba(99, 102, 241, 0.5);
-  --radius: 1rem;
+  --ring: rgba(61, 123, 255, 0.6);
+  --radius: 0.875rem;
 }
 
 @theme inline {
@@ -85,12 +88,13 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* clipr-* utilities: bg-clipr-card, text-clipr-gold, border-clipr-border … */
+  /* clipr-* utilities */
   --color-clipr-bg: var(--clipr-bg);
   --color-clipr-surface: var(--clipr-surface);
   --color-clipr-card: var(--clipr-card);
   --color-clipr-card-bright: var(--clipr-card-bright);
   --color-clipr-border: var(--clipr-border);
+  --color-clipr-border-strong: var(--clipr-border-strong);
   --color-clipr-gold: var(--clipr-gold);
   --color-clipr-gold-strong: var(--clipr-gold-strong);
   --color-clipr-gold-soft: var(--clipr-gold-soft);
@@ -106,23 +110,24 @@
   --color-brand-youtube: var(--brand-youtube);
   --color-brand-facebook: var(--brand-facebook);
 
-  --font-sans: var(--font-grotesk), "Plus Jakarta Sans", ui-sans-serif,
-    system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-sora), var(--font-inter), ui-sans-serif, sans-serif;
   --font-mono: var(--font-space-mono), ui-monospace, monospace;
 
-  --radius-sm: calc(var(--radius) - 8px);
-  --radius-md: calc(var(--radius) - 4px);
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 3px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 8px);
+  --radius-xl: calc(var(--radius) + 6px);
 
-  --animate-fade-up: fadeUp 0.3s ease both;
+  --animate-fade-up: fadeUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-caption-flash: captionFlash 0.15s ease both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
 }
 
 @keyframes fadeUp {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -147,16 +152,43 @@
   }
 }
 
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 @layer base {
   * {
     @apply outline-ring/50;
   }
   body {
-    background: var(--clipr-bg);
+    background:
+      radial-gradient(
+        900px 500px at 12% -8%,
+        rgba(61, 123, 255, 0.1),
+        transparent 60%
+      ),
+      radial-gradient(
+        800px 500px at 100% 0%,
+        rgba(34, 211, 238, 0.07),
+        transparent 55%
+      ),
+      var(--clipr-bg);
+    background-attachment: fixed;
     color: var(--clipr-text);
-    font-family: var(--font-grotesk), "Plus Jakarta Sans", ui-sans-serif,
-      system-ui, sans-serif;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-sora), var(--font-inter), ui-sans-serif, sans-serif;
+    letter-spacing: -0.02em;
   }
   input,
   textarea,
@@ -167,7 +199,7 @@
   }
 }
 
-/* ---------- Neumorphic helpers ---------- */
+/* ---------- Elevation helpers (dark) ---------- */
 .neo-raised {
   box-shadow: var(--neo-raised);
 }
@@ -175,30 +207,67 @@
   box-shadow: var(--neo-raised-sm);
 }
 .neo-inset {
+  background: var(--clipr-surface);
   box-shadow: var(--neo-inset);
 }
-/* pressed/active nav pill */
 .neo-active {
-  box-shadow: var(--neo-inset);
+  background: var(--clipr-gold-glow);
+  box-shadow: 0 0 0 1px rgba(61, 123, 255, 0.35);
 }
 
-/* indigo loading spinner for buttons */
+/* gradient text / surfaces */
+.text-gradient {
+  background: var(--clipr-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.bg-gradient-blue {
+  background: var(--clipr-gradient);
+}
+.glow-blue {
+  box-shadow: var(--glow-blue);
+}
+
+/* electric-blue loading spinner */
 .clipr-spinner {
   width: 14px;
   height: 14px;
   border-radius: 9999px;
-  border: 2px solid rgba(99, 102, 241, 0.25);
+  border: 2px solid rgba(61, 123, 255, 0.25);
   border-top-color: var(--clipr-gold);
   animation: spin-gold 0.9s linear infinite;
+}
+
+/* skeleton shimmer */
+.clipr-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--clipr-card) 25%,
+    var(--clipr-card-bright) 50%,
+    var(--clipr-card) 75%
+  );
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
 }
 
 /* 9:16 preview scanline texture */
 .clipr-scanlines {
   background-image: repeating-linear-gradient(
     to bottom,
-    rgba(255, 255, 255, 0.04),
-    rgba(255, 255, 255, 0.04) 1px,
+    rgba(255, 255, 255, 0.03),
+    rgba(255, 255, 255, 0.03) 1px,
     transparent 1px,
     transparent 3px
   );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

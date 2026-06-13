@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Space_Mono } from "next/font/google";
+import { Inter, Sora, Space_Mono } from "next/font/google";
 import "./globals.css";
 
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-grotesk",
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
+
+const sora = Sora({
+  variable: "--font-sora",
   weight: ["400", "500", "600", "700", "800"],
   subsets: ["latin"],
 });
@@ -28,7 +33,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${jakarta.variable} ${spaceMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${sora.variable} ${spaceMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-clipr-bg text-clipr-text">
         {children}
