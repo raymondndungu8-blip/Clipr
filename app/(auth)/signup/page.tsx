@@ -34,10 +34,20 @@ export default function SignupPage() {
       }
       if (data.session) {
         router.push("/dashboard");
-      } else {
-        toast.success("Check your inbox to confirm your email.");
-        router.push("/login");
+        return;
       }
+      // No session returned (e.g. email confirmation). Try an immediate sign-in —
+      // this succeeds when the account is already confirmed.
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (signInError) {
+        toast.success("Check your inbox to confirm your email, then sign in.");
+        router.push("/login");
+        return;
+      }
+      router.push("/dashboard");
     } catch {
       toast.error("Couldn't create your account. Please try again.");
     } finally {
