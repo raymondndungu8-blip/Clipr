@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude plugin *)",
+      "Bash(cat \"C:\\\\Users\\\\HomePC\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-HomePC-Clipr\\\\d100f348-64f6-43fa-92ff-37b6ea23ef07\\\\tasks\\\\b02zzlxrl.output\" 2>/dev/null; ls /c/Users/HomePC/.claude/plugins/ECC-temp 2>/dev/null | head -20)",
+      "Bash(git clone *)",
+      "Read(//c/Users/HomePC/AppData/Local/Temp/**)",
+      "Bash(tasklist //FI \"IMAGENAME eq git.exe\")",
+      "Bash(curl -s https://api.github.com/repos/affaan-m/ECC)",
+      "Bash(curl -sL -w \"HTTP %{http_code}\\\\n\" https://api.github.com/repos/affaan-m/ECC -o /tmp/ecc.json)",
+      "Read(//tmp/**)",
+      "Bash(rm -rf \"/c/Users/HomePC/.claude/local-marketplaces/ECC\" && git clone --depth 1 --filter=blob:none --no-checkout https://github.com/affaan-m/ECC.git \"/c/Users/HomePC/.claude/local-marketplaces/ECC\" 2>&1)",
+      "PowerShell(\\(Get-Content package.json -Raw | ConvertFrom-Json\\).dependencies; \\(Get-Content package.json -Raw | ConvertFrom-Json\\).devDependencies)",
+      "PowerShell(npm install @supabase/ssr @supabase/supabase-js @upstash/ratelimit @upstash/redis zod @anthropic-ai/sdk @aws-sdk/client-s3 2>&1)",
+      "PowerShell(git config user.email \"raymond@rnstudio.dev\"; git config user.name \"Raymond Ndungu\"; Get-ChildItem -Recurse -File lib, app/api, types -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName | ForEach-Object { $_.Replace\\(\"$PWD\\\\\",\"\"\\) })"
+    ]
+  }
+}

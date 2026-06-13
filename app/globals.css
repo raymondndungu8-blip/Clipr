@@ -1,0 +1,163 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* ---------- Clipr design tokens ---------- */
+:root {
+  --clipr-bg: #0a0a0a;
+  --clipr-surface: #111111;
+  --clipr-card: #171717;
+  --clipr-border: #222222;
+  --clipr-gold: #c9a84c;
+  --clipr-gold-glow: rgba(201, 168, 76, 0.1);
+  --clipr-text: #eeebe4;
+  --clipr-text-secondary: #7a756e;
+  --clipr-text-dim: #333028;
+  --clipr-success: #4caf7a;
+  --clipr-error: #e05a5a;
+  --clipr-info: #5a9be0;
+
+  /* platform brand colors */
+  --brand-tiktok: #69c9d0;
+  --brand-instagram: #e1306c;
+  --brand-youtube: #ff3b30;
+  --brand-facebook: #1877f2;
+
+  /* shadcn semantic tokens mapped to the Clipr palette (dark-only app) */
+  --background: var(--clipr-bg);
+  --foreground: var(--clipr-text);
+  --card: var(--clipr-card);
+  --card-foreground: var(--clipr-text);
+  --popover: var(--clipr-surface);
+  --popover-foreground: var(--clipr-text);
+  --primary: var(--clipr-gold);
+  --primary-foreground: #0a0a0a;
+  --secondary: var(--clipr-surface);
+  --secondary-foreground: var(--clipr-text);
+  --muted: var(--clipr-card);
+  --muted-foreground: var(--clipr-text-secondary);
+  --accent: var(--clipr-gold-glow);
+  --accent-foreground: var(--clipr-gold);
+  --destructive: var(--clipr-error);
+  --destructive-foreground: #ffffff;
+  --border: var(--clipr-border);
+  --input: var(--clipr-border);
+  --ring: rgba(201, 168, 76, 0.5);
+  --radius: 0.5rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* clipr-* utilities: bg-clipr-card, text-clipr-gold, border-clipr-border … */
+  --color-clipr-bg: var(--clipr-bg);
+  --color-clipr-surface: var(--clipr-surface);
+  --color-clipr-card: var(--clipr-card);
+  --color-clipr-border: var(--clipr-border);
+  --color-clipr-gold: var(--clipr-gold);
+  --color-clipr-text: var(--clipr-text);
+  --color-clipr-secondary: var(--clipr-text-secondary);
+  --color-clipr-dim: var(--clipr-text-dim);
+  --color-clipr-success: var(--clipr-success);
+  --color-clipr-error: var(--clipr-error);
+  --color-clipr-info: var(--clipr-info);
+  --color-brand-tiktok: var(--brand-tiktok);
+  --color-brand-instagram: var(--brand-instagram);
+  --color-brand-youtube: var(--brand-youtube);
+  --color-brand-facebook: var(--brand-facebook);
+
+  --font-sans: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-space-mono), ui-monospace, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --animate-fade-up: fadeUp 0.3s ease both;
+  --animate-caption-flash: captionFlash 0.15s ease both;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes captionFlash {
+  from {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes spin-gold {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    background: var(--clipr-bg);
+    color: var(--clipr-text);
+    font-family: var(--font-grotesk), ui-sans-serif, system-ui, sans-serif;
+  }
+  input,
+  textarea,
+  select {
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+}
+
+/* gold loading spinner for buttons */
+.clipr-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  border: 2px solid rgba(201, 168, 76, 0.25);
+  border-top-color: var(--clipr-gold);
+  animation: spin-gold 0.9s linear infinite;
+}
+
+/* 9:16 preview scanline texture */
+.clipr-scanlines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.012),
+    rgba(255, 255, 255, 0.012) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
