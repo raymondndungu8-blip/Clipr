@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Sora, Space_Mono } from "next/font/google";
+import { MotionProvider } from "@/components/motion";
 import "./globals.css";
 
 const inter = Inter({
@@ -36,7 +37,7 @@ export default function RootLayout({
       className={`${inter.variable} ${sora.variable} ${spaceMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-clipr-bg text-clipr-text">
-        {children}
+        <MotionProvider>{children}</MotionProvider>
       </body>
     </html>
   );

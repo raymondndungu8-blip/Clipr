@@ -3,35 +3,38 @@
 import { useEffect, useRef, useState } from "react";
 import {
   motion,
+  MotionConfig,
   useInView,
   useReducedMotion,
   animate,
   type HTMLMotionProps,
 } from "framer-motion";
-import {
-  fadeUp,
-  hoverLift,
-  pressScale,
-  scaleIn,
-  springQuick,
-  staggerContainer,
-  staggerItem,
-} from "@/lib/motion";
+import { fadeUp, hoverLift, pressScale, scaleIn } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
-/** Fade + rise on mount. Optional delay for hand-placed sequencing. */
+/**
+ * App-wide motion provider. `reducedMotion="user"` makes framer honor the OS
+ * "reduce motion" setting WITHOUT changing the server-rendered markup, so it
+ * can't cause hydration mismatches. Reduced-motion handling must live here,
+ * never in per-component `initial`/`whileHover` branches (those differ between
+ * server and client and break hydration).
+ */
+export function MotionProvider({ children }: { children: React.ReactNode }) {
+  return <MotionConfig reducedMotion="user">{children}</MotionConfig>;
+}
+
+/** Fade + rise on mount. */
 export function FadeIn({
   children,
   delay = 0,
   className,
   ...rest
 }: HTMLMotionProps<"div"> & { delay?: number }) {
-  const reduce = useReducedMotion();
   return (
     <motion.div
       className={className}
       variants={fadeUp}
-      initial={reduce ? false : "hidden"}
+      initial="hidden"
       animate="show"
       transition={{ delay }}
       {...rest}
@@ -47,12 +50,11 @@ export function ScaleIn({
   className,
   ...rest
 }: HTMLMotionProps<"div">) {
-  const reduce = useReducedMotion();
   return (
     <motion.div
       className={className}
       variants={scaleIn}
-      initial={reduce ? false : "hidden"}
+      initial="hidden"
       animate="show"
       {...rest}
     >
@@ -63,23 +65,27 @@ export function ScaleIn({
 
 /**
  * Staggered reveal container. Children should be <StaggerItem>. Reveals when
- * scrolled into view (once), so long pages animate section by section.
+ * scrolled into view (once). `initial` is identical on server and client
+ * ("hidden"), so there's no hydration mismatch — only `animate` flips after
+ * the IntersectionObserver fires on the client.
  */
 export function Stagger({
   children,
   className,
   ...rest
 }: HTMLMotionProps<"div">) {
-  const reduce = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-60px" });
   return (
     <motion.div
       ref={ref}
       className={className}
-      variants={staggerContainer}
-      initial={reduce ? false : "hidden"}
-      animate={reduce || inView ? "show" : "hidden"}
+      variants={{
+        hidden: {},
+        show: { transition: { staggerChildren: 0.06, delayChildren: 0.05 } },
+      }}
+      initial="hidden"
+      animate={inView ? "show" : "hidden"}
       {...rest}
     >
       {children}
@@ -93,26 +99,39 @@ export function StaggerItem({
   ...rest
 }: HTMLMotionProps<"div">) {
   return (
-    <motion.div className={className} variants={staggerItem} {...rest}>
+    <motion.div
+      className={className}
+      variants={{
+        hidden: { opacity: 0, y: 14 },
+        show: {
+          opacity: 1,
+          y: 0,
+          transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
+        },
+      }}
+      {...rest}
+    >
       {children}
     </motion.div>
   );
 }
 
-/** Interactive card: hover lift + press feedback (transform/opacity only). */
+/**
+ * Interactive card: hover lift + press feedback. whileHover/whileTap are set
+ * unconditionally (no reduced-motion branch) so server and client markup match;
+ * MotionProvider neutralizes the transform for reduced-motion users.
+ */
 export function MotionCard({
   children,
   className,
-  interactive = true,
   ...rest
-}: HTMLMotionProps<"div"> & { interactive?: boolean }) {
-  const reduce = useReducedMotion();
+}: HTMLMotionProps<"div">) {
   return (
     <motion.div
       className={className}
       variants={fadeUp}
-      whileHover={interactive && !reduce ? hoverLift : undefined}
-      whileTap={interactive && !reduce ? pressScale : undefined}
+      whileHover={hoverLift}
+      whileTap={pressScale}
       {...rest}
     >
       {children}
@@ -126,11 +145,10 @@ export function PageTransition({
   className,
   ...rest
 }: HTMLMotionProps<"div">) {
-  const reduce = useReducedMotion();
   return (
     <motion.div
       className={className}
-      initial={reduce ? false : { opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
       {...rest}
@@ -140,7 +158,12 @@ export function PageTransition({
   );
 }
 
-/** Animated count-up number for stats. Respects reduced motion. */
+/**
+ * Animated count-up number for stats. The render output never depends on the
+ * reduced-motion value (it always renders `display`, which starts at 0 on both
+ * server and client), so hydration is stable. Reduced motion only changes the
+ * effect's duration to 0.
+ */
 export function CountUp({
   value,
   duration = 1.1,
@@ -158,24 +181,22 @@ export function CountUp({
   const inView = useInView(ref, { once: true });
 
   useEffect(() => {
-    if (reduce || !inView) return;
+    if (!inView) return;
     const controls = animate(0, value, {
-      duration,
+      duration: reduce ? 0 : duration,
       ease: [0.22, 1, 0.36, 1],
       onUpdate: (v) => setDisplay(v),
     });
     return () => controls.stop();
   }, [inView, value, duration, reduce]);
 
-  // When reduced motion is on, render the final value directly (no animation).
-  const shown = reduce ? value : display;
-
   return (
     <span ref={ref} className={cn("tabular-nums", className)}>
-      {format(Math.round(shown))}
+      {format(Math.round(display))}
     </span>
   );
 }
 
-/** Re-export motion for ad-hoc use in pages. */
-export { motion, springQuick };
+/** Re-export motion + spring for ad-hoc use in pages. */
+export { motion };
+export { springQuick } from "@/lib/motion";
