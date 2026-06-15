@@ -7,6 +7,7 @@ const CSP = [
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: https:",
   "media-src 'self' https: blob:",
+  "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
   "connect-src 'self' https://*.supabase.co https://*.upstash.io wss://*.supabase.co",
 ].join("; ");
 

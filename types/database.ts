@@ -82,6 +82,8 @@ export interface Database {
           captions: string[] | null;
           hashtags: string[] | null;
           duration: string | null;
+          start_seconds: number | null;
+          end_seconds: number | null;
           r2_url: string | null;
           bg_gradient: string | null;
           created_at: string | null;
@@ -95,6 +97,8 @@ export interface Database {
           captions?: string[] | null;
           hashtags?: string[] | null;
           duration?: string | null;
+          start_seconds?: number | null;
+          end_seconds?: number | null;
           r2_url?: string | null;
           bg_gradient?: string | null;
           created_at?: string | null;
@@ -108,6 +112,8 @@ export interface Database {
           captions?: string[] | null;
           hashtags?: string[] | null;
           duration?: string | null;
+          start_seconds?: number | null;
+          end_seconds?: number | null;
           r2_url?: string | null;
           bg_gradient?: string | null;
           created_at?: string | null;

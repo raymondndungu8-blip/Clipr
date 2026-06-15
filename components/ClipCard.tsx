@@ -5,13 +5,20 @@ import { Copy, Send } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import VideoPreview from "@/components/VideoPreview";
+import VideoPreview, { youtubeIdFromUrl } from "@/components/VideoPreview";
 import PostDialog from "@/components/PostDialog";
 
 type Clip = Tables<"clips">;
 
-export default function ClipCard({ clip }: { clip: Clip }) {
+export default function ClipCard({
+  clip,
+  sourceUrl,
+}: {
+  clip: Clip;
+  sourceUrl?: string | null;
+}) {
   const [postOpen, setPostOpen] = useState(false);
+  const youtubeId = youtubeIdFromUrl(sourceUrl);
 
   const hashtags = clip.hashtags ?? [];
   const captions = clip.captions ?? [];
@@ -39,6 +46,9 @@ export default function ClipCard({ clip }: { clip: Clip }) {
           duration={clip.duration ?? undefined}
           bgGradient={clip.bg_gradient ?? undefined}
           videoUrl={clip.r2_url}
+          youtubeId={youtubeId}
+          startSeconds={clip.start_seconds}
+          endSeconds={clip.end_seconds}
         />
       </div>
 

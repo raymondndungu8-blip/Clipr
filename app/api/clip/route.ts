@@ -10,6 +10,8 @@ interface ClipMeta {
   captions: string[];
   hashtags: string[];
   duration: string;
+  startSeconds: number;
+  endSeconds: number;
   bgGradient: string;
 }
 
@@ -67,13 +69,16 @@ Style: ${style}. Target platforms: ${platforms.join(", ")}.
 Return a JSON array of exactly 3 objects, each with:
 - "title": punchy clip title (under 60 chars)
 - "hook": scroll-stopping first line spoken on screen
-- "description": 1-2 sentence post description tailored to the platforms
+- "description": 1 short post description tailored to the platforms
 - "captions": array of exactly 5 short caption chunks, each 2-4 words, ALL UPPERCASE
 - "hashtags": array of exactly 5 relevant hashtags (with #)
-- "duration": estimated clip length as "0:NN" (e.g. "0:34")
+- "duration": clip length as "0:NN" (e.g. "0:34"), between 15 and 60 seconds
+- "startSeconds": integer start time (in seconds) of this moment within the source video
+- "endSeconds": integer end time (in seconds); endSeconds - startSeconds must equal the duration. Pick 3 different, non-overlapping moments spread across a typical 8-15 minute video.
 - "bgGradient": a dark CSS linear-gradient string suited to the mood (e.g. "linear-gradient(135deg, #0f0c29, #302b63)")
 
 Return ONLY the JSON array. No markdown, no commentary.`,
+      maxTokens: 1800,
     });
 
     if (!Array.isArray(clipsJson) || clipsJson.length === 0) {
@@ -90,6 +95,10 @@ Return ONLY the JSON array. No markdown, no commentary.`,
         captions: clip.captions,
         hashtags: clip.hashtags,
         duration: clip.duration,
+        start_seconds:
+          typeof clip.startSeconds === "number" ? clip.startSeconds : null,
+        end_seconds:
+          typeof clip.endSeconds === "number" ? clip.endSeconds : null,
         bg_gradient: clip.bgGradient,
       }))
     );

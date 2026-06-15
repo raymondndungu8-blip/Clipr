@@ -35,11 +35,34 @@ type VideoPreviewProps = {
   duration?: string;
   bgGradient?: string;
   videoUrl?: string | null;
+  /** YouTube video id — renders the real clip segment as a live preview. */
+  youtubeId?: string | null;
+  startSeconds?: number | null;
+  endSeconds?: number | null;
   captionStyle?: CaptionStyle;
   /** Force the preview to show a specific caption index (disables cycling). */
   activeIndex?: number;
   className?: string;
 };
+
+/** Extract a YouTube video id from common URL shapes. */
+export function youtubeIdFromUrl(url?: string | null): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace("www.", "");
+    if (host === "youtu.be") return u.pathname.slice(1) || null;
+    if (host.includes("youtube.com")) {
+      if (u.searchParams.get("v")) return u.searchParams.get("v");
+      const parts = u.pathname.split("/");
+      const i = parts.findIndex((p) => p === "shorts" || p === "embed");
+      if (i >= 0 && parts[i + 1]) return parts[i + 1];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 export default function VideoPreview({
   hook,
@@ -47,6 +70,9 @@ export default function VideoPreview({
   duration,
   bgGradient,
   videoUrl,
+  youtubeId,
+  startSeconds,
+  endSeconds,
   captionStyle = "Bold Gold",
   activeIndex,
   className,
@@ -70,6 +96,87 @@ export default function VideoPreview({
 
   const colors = STYLE_COLORS[captionStyle] ?? STYLE_COLORS["Bold Gold"];
 
+  const isEmbed = !videoUrl && !!youtubeId;
+  const embedSrc = isEmbed
+    ? `https://www.youtube.com/embed/${youtubeId}?` +
+      new URLSearchParams({
+        autoplay: "1",
+        mute: "1",
+        controls: "1",
+        rel: "0",
+        modestbranding: "1",
+        playsinline: "1",
+        loop: "1",
+        playlist: youtubeId!,
+        ...(typeof startSeconds === "number"
+          ? { start: String(Math.max(0, startSeconds)) }
+          : {}),
+        ...(typeof endSeconds === "number"
+          ? { end: String(endSeconds) }
+          : {}),
+      }).toString()
+    : null;
+
+  // Caption + hook + duration overlay, shown over the gradient mock and the
+  // live YouTube clip alike. pointer-events-none so player controls stay usable.
+  const overlay = (
+    <div className="pointer-events-none absolute inset-0">
+      {hook && (
+        <div className="absolute inset-x-0 px-4 text-center" style={{ top: "8%" }}>
+          <p
+            className="font-sans font-bold leading-snug"
+            style={{
+              fontSize: 15,
+              color: "#FFFFFF",
+              textShadow: "0 2px 8px rgba(0,0,0,0.85)",
+            }}
+          >
+            {hook}
+          </p>
+        </div>
+      )}
+
+      {shown && (
+        <div
+          className="absolute inset-x-0 flex justify-center px-4"
+          style={{ bottom: "16%" }}
+        >
+          <span
+            key={controlled ? `c-${activeIndex}` : `c-${index}`}
+            className="animate-caption-flash inline-block rounded-md px-2.5 py-1 font-mono font-bold uppercase"
+            style={{
+              fontSize: 14,
+              lineHeight: 1.1,
+              backgroundColor: colors.bg,
+              color: colors.fg,
+              letterSpacing: "0.02em",
+              boxShadow: "0 2px 10px rgba(0,0,0,0.4)",
+            }}
+          >
+            {shown}
+          </span>
+        </div>
+      )}
+
+      {duration && (
+        <div
+          className="absolute font-mono"
+          style={{
+            bottom: 8,
+            right: 8,
+            fontSize: 10,
+            padding: "2px 6px",
+            borderRadius: 6,
+            backgroundColor: "rgba(0,0,0,0.75)",
+            color: "#EEEBE4",
+          }}
+        >
+          {duration}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className={className} style={{ maxWidth: 300, width: "100%" }}>
       <div
@@ -77,100 +184,57 @@ export default function VideoPreview({
         style={{ paddingTop: "calc(177.78% + 0.75rem)" }}
       >
         <div className="absolute inset-1.5 overflow-hidden rounded-lg">
-        {videoUrl ? (
-          <video
-            src={videoUrl}
-            controls
-            playsInline
-            className="absolute inset-0 h-full w-full bg-black object-cover"
-          />
-        ) : (
-          <>
-            <div
-              className="absolute inset-0"
-              style={{ background: bgGradient || DEFAULT_GRADIENT }}
-            />
-            <div className="clipr-scanlines absolute inset-0" />
-
-            {/* hook text near top */}
-            {hook && (
+          {videoUrl ? (
+            <>
+              <video
+                src={videoUrl}
+                controls
+                playsInline
+                className="absolute inset-0 h-full w-full bg-black object-cover"
+              />
+              {overlay}
+            </>
+          ) : isEmbed ? (
+            <>
+              <iframe
+                src={embedSrc!}
+                title="Clip preview"
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+                className="absolute inset-0 h-full w-full border-0 bg-black"
+              />
+              {overlay}
+            </>
+          ) : (
+            <>
               <div
-                className="absolute inset-x-0 px-4 text-center"
-                style={{ top: "10%" }}
-              >
-                <p
-                  className="font-sans font-bold leading-snug"
+                className="absolute inset-0"
+                style={{ background: bgGradient || DEFAULT_GRADIENT }}
+              />
+              <div className="clipr-scanlines absolute inset-0" />
+
+              {/* center play button (mock only) */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div
+                  className="flex items-center justify-center rounded-full"
                   style={{
-                    fontSize: 16,
-                    color: "#FFFFFF",
-                    textShadow: "0 2px 8px rgba(0,0,0,0.7)",
+                    width: 34,
+                    height: 34,
+                    backgroundColor: "var(--clipr-gold)",
+                    boxShadow: "0 0 24px 4px rgba(61,123,255,0.5)",
                   }}
                 >
-                  {hook}
-                </p>
+                  <Play
+                    fill="#FFFFFF"
+                    stroke="#FFFFFF"
+                    style={{ width: 14, height: 14, marginLeft: 2 }}
+                  />
+                </div>
               </div>
-            )}
 
-            {/* center play button */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div
-                className="flex items-center justify-center rounded-full"
-                style={{
-                  width: 34,
-                  height: 34,
-                  backgroundColor: "var(--clipr-gold)",
-                  boxShadow: "0 0 24px 4px rgba(61,123,255,0.5)",
-                }}
-              >
-                <Play
-                  fill="#FFFFFF"
-                  stroke="#FFFFFF"
-                  style={{ width: 14, height: 14, marginLeft: 2 }}
-                />
-              </div>
-            </div>
-
-            {/* cycling caption chunk near bottom */}
-            {shown && (
-              <div
-                className="absolute inset-x-0 flex justify-center px-4"
-                style={{ bottom: "12%" }}
-              >
-                <span
-                  key={controlled ? `c-${activeIndex}` : `c-${index}`}
-                  className="animate-caption-flash inline-block rounded-md px-2.5 py-1 font-mono font-bold uppercase"
-                  style={{
-                    fontSize: 14,
-                    lineHeight: 1.1,
-                    backgroundColor: colors.bg,
-                    color: colors.fg,
-                    letterSpacing: "0.02em",
-                  }}
-                >
-                  {shown}
-                </span>
-              </div>
-            )}
-
-            {/* duration badge */}
-            {duration && (
-              <div
-                className="absolute font-mono"
-                style={{
-                  bottom: 8,
-                  right: 8,
-                  fontSize: 10,
-                  padding: "2px 6px",
-                  borderRadius: 6,
-                  backgroundColor: "rgba(0,0,0,0.75)",
-                  color: "#EEEBE4",
-                }}
-              >
-                {duration}
-              </div>
-            )}
-          </>
-        )}
+              {overlay}
+            </>
+          )}
         </div>
       </div>
     </div>

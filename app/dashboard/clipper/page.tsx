@@ -50,6 +50,7 @@ export default function ClipperPage() {
   const [loading, setLoading] = useState(false);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
   const [clips, setClips] = useState<Clip[]>([]);
+  const [clipSourceUrl, setClipSourceUrl] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldIssues>({});
   const [rateLimit, setRateLimit] = useState<string | null>(null);
 
@@ -147,6 +148,7 @@ export default function ClipperPage() {
     setFieldErrors({});
     setRateLimit(null);
     setClips([]);
+    setClipSourceUrl(url.trim() || null);
     setJobStatus("pending");
 
     try {
@@ -289,7 +291,7 @@ export default function ClipperPage() {
             <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {clips.map((clip) => (
                 <StaggerItem key={clip.id}>
-                  <ClipCard clip={clip} />
+                  <ClipCard clip={clip} sourceUrl={clipSourceUrl} />
                 </StaggerItem>
               ))}
             </Stagger>
