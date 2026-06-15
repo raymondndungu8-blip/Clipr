@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+# nested sub-project deps (worker/, remotion/)
+**/node_modules/
 /.pnp
 .pnp.*
 .yarn/*
