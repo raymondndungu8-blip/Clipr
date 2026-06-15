@@ -251,9 +251,9 @@ export default function ClipperPage() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label>How many clips?</Label>
-            <div className="flex flex-wrap gap-2">
-              {[1, 2, 3, 4, 5, 6].map((n) => (
+            <Label htmlFor="clip-count">How many clips? (1–20)</Label>
+            <div className="flex flex-wrap items-center gap-2">
+              {[3, 6, 10, 15, 20].map((n) => (
                 <button
                   key={n}
                   type="button"
@@ -269,9 +269,22 @@ export default function ClipperPage() {
                   {n}
                 </button>
               ))}
+              <Input
+                id="clip-count"
+                type="number"
+                min={1}
+                max={20}
+                value={count}
+                onChange={(e) => {
+                  const n = parseInt(e.target.value, 10);
+                  if (Number.isNaN(n)) return;
+                  setCount(Math.min(20, Math.max(1, n)));
+                }}
+                className="w-20 bg-clipr-surface"
+              />
             </div>
             <p className="text-xs text-clipr-dim">
-              Number of shorts/reels to generate.
+              Number of shorts/reels to generate from the video (up to 20).
             </p>
           </div>
 

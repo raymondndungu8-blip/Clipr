@@ -26,7 +26,14 @@ function arg(name, fallback) {
 const compositionId = arg("id", "CaptionClip");
 const outPath = path.resolve(arg("out", `out/${compositionId}.mp4`));
 const propsArg = arg("props", "");
-const inputProps = propsArg ? JSON.parse(propsArg) : {};
+const propsFile = arg("props-file", "");
+// Props can come from --props '<json>' or, to avoid shell-quoting issues,
+// --props-file <path-to-json>.
+const inputProps = propsFile
+  ? JSON.parse(await readFile(propsFile, "utf8"))
+  : propsArg
+    ? JSON.parse(propsArg)
+    : {};
 // Object key/path within the bucket (don't prefix the bucket name).
 const r2Key = arg("key", `renders/${Date.now()}-${compositionId}.mp4`);
 
@@ -136,6 +143,8 @@ async function main() {
   const url = await uploadVideo(outPath);
   if (url) {
     console.log(`\nUploaded: ${url}`);
+    // Machine-readable result line for callers that spawn this script.
+    console.log(`CLIPR_RESULT_URL=${url}`);
   } else {
     console.log(`\nLocal file: ${outPath}`);
   }

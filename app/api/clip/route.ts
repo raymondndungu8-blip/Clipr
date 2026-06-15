@@ -79,7 +79,7 @@ Return a JSON array of exactly ${count} objects, each with:
 - "bgGradient": a dark CSS linear-gradient string suited to the mood (e.g. "linear-gradient(135deg, #0f0c29, #302b63)")
 
 Return ONLY the JSON array. No markdown, no commentary.`,
-      maxTokens: Math.max(1800, count * 700),
+      maxTokens: Math.min(Math.max(1800, count * 650 + 600), 12000),
     });
 
     if (!Array.isArray(clipsJson) || clipsJson.length === 0) {

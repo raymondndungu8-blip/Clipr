@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Send } from "lucide-react";
+import { Copy, Send, Clapperboard } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import VideoPreview, { youtubeIdFromUrl } from "@/components/VideoPreview";
 import PostDialog from "@/components/PostDialog";
+import { apiPost, ApiError } from "@/components/lib/api";
 
 type Clip = Tables<"clips">;
 
@@ -18,7 +19,25 @@ export default function ClipCard({
   sourceUrl?: string | null;
 }) {
   const [postOpen, setPostOpen] = useState(false);
+  const [renderedUrl, setRenderedUrl] = useState<string | null>(clip.r2_url);
+  const [rendering, setRendering] = useState(false);
   const youtubeId = youtubeIdFromUrl(sourceUrl);
+
+  async function renderVideo() {
+    setRendering(true);
+    try {
+      const { url } = await apiPost<{ url: string }>("/api/render", {
+        clipId: clip.id,
+      });
+      setRenderedUrl(url);
+      toast.success("Clip rendered and saved.");
+    } catch (err) {
+      if (err instanceof ApiError) toast.error(err.message);
+      else toast.error("Couldn't render this clip.");
+    } finally {
+      setRendering(false);
+    }
+  }
 
   const hashtags = clip.hashtags ?? [];
   const captions = clip.captions ?? [];
@@ -45,7 +64,7 @@ export default function ClipCard({
           captions={captions}
           duration={clip.duration ?? undefined}
           bgGradient={clip.bg_gradient ?? undefined}
-          videoUrl={clip.r2_url}
+          videoUrl={renderedUrl}
           youtubeId={youtubeId}
           startSeconds={clip.start_seconds}
           endSeconds={clip.end_seconds}
@@ -78,24 +97,39 @@ export default function ClipCard({
         </div>
       )}
 
-      <div className="mt-auto flex gap-2">
+      <div className="mt-auto flex flex-col gap-2">
         <Button
           variant="outline"
           size="sm"
-          className="flex-1 text-clipr-gold hover:text-clipr-gold"
-          onClick={copyCaption}
+          onClick={renderVideo}
+          disabled={rendering}
         >
-          <Copy className="size-3.5" />
-          Copy caption
+          {rendering ? (
+            <span className="clipr-spinner" />
+          ) : (
+            <Clapperboard className="size-3.5" />
+          )}
+          {rendering
+            ? "Rendering…"
+            : renderedUrl
+              ? "Re-render video"
+              : "Render video"}
         </Button>
-        <Button
-          size="sm"
-          className="flex-1"
-          onClick={() => setPostOpen(true)}
-        >
-          <Send className="size-3.5" />
-          Post
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 text-clipr-gold hover:text-clipr-gold"
+            onClick={copyCaption}
+          >
+            <Copy className="size-3.5" />
+            Copy caption
+          </Button>
+          <Button size="sm" className="flex-1" onClick={() => setPostOpen(true)}>
+            <Send className="size-3.5" />
+            Post
+          </Button>
+        </div>
       </div>
 
       <PostDialog
