@@ -1,0 +1,23 @@
+{
+  "name": "clipr-remotion",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Remotion compositions for Clipr — renders vertical clips with animated captions to MP4.",
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render",
+    "upgrade": "remotion upgrade"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.477",
+    "@remotion/renderer": "^4.0.477",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "remotion": "^4.0.477"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3"
+  }
+}

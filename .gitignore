@@ -43,3 +43,7 @@ next-env.d.ts
 # local dev artifacts
 dev.log
 .stitch/
+
+# remotion render output + cache
+remotion/out/
+remotion/.remotion/
