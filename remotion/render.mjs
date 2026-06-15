@@ -29,19 +29,48 @@ const propsArg = arg("props", "");
 const inputProps = propsArg ? JSON.parse(propsArg) : {};
 const r2Key = arg("key", `clips/${Date.now()}-${compositionId}.mp4`);
 
+// Upload to Supabase Storage (preferred — needs only the service-role key).
+async function uploadToSupabase(localPath) {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const bucket = process.env.SUPABASE_STORAGE_BUCKET || "clips";
+  if (!url || !serviceKey || serviceKey.includes("...")) return null;
+
+  const body = await readFile(localPath);
+  const endpoint = `${url}/storage/v1/object/${bucket}/${r2Key}`;
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${serviceKey}`,
+      "Content-Type": "video/mp4",
+      "x-upsert": "true",
+    },
+    body,
+  });
+  if (!res.ok) {
+    throw new Error(
+      `Supabase upload failed (${res.status}): ${(await res.text()).slice(0, 200)}`
+    );
+  }
+  return `${url}/storage/v1/object/public/${bucket}/${r2Key}`;
+}
+
+// Upload to Cloudflare R2 (fallback — needs the full R2 credential set).
 async function uploadToR2(localPath) {
   const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID;
   const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
   const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
   const bucket = process.env.CLOUDFLARE_R2_BUCKET_NAME;
   const publicUrl = process.env.R2_PUBLIC_URL;
-
-  if (!accountId || !accessKeyId || !secretAccessKey || !bucket || !publicUrl) {
-    console.log(
-      "\nR2 not configured — skipping upload. Set CLOUDFLARE_R2_ACCOUNT_ID, " +
-        "CLOUDFLARE_R2_ACCESS_KEY_ID, CLOUDFLARE_R2_SECRET_ACCESS_KEY, " +
-        "CLOUDFLARE_R2_BUCKET_NAME and R2_PUBLIC_URL to enable it."
-    );
+  if (
+    !accountId ||
+    !accessKeyId ||
+    accessKeyId.includes("...") ||
+    !secretAccessKey ||
+    !bucket ||
+    !publicUrl ||
+    publicUrl.includes("xxxx")
+  ) {
     return null;
   }
 
@@ -61,6 +90,20 @@ async function uploadToR2(localPath) {
     })
   );
   return `${publicUrl}/${r2Key}`;
+}
+
+// Try Supabase Storage first, then R2, else skip.
+async function uploadVideo(localPath) {
+  const viaSupabase = await uploadToSupabase(localPath);
+  if (viaSupabase) return viaSupabase;
+  const viaR2 = await uploadToR2(localPath);
+  if (viaR2) return viaR2;
+  console.log(
+    "\nNo storage configured — skipping upload.\n" +
+      "  • Supabase: set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (bucket 'clips'), or\n" +
+      "  • R2: set CLOUDFLARE_R2_ACCOUNT_ID/ACCESS_KEY_ID/SECRET_ACCESS_KEY/BUCKET_NAME + R2_PUBLIC_URL."
+  );
+  return null;
 }
 
 async function main() {
@@ -86,9 +129,9 @@ async function main() {
   });
   console.log("Render complete.");
 
-  const url = await uploadToR2(outPath);
+  const url = await uploadVideo(outPath);
   if (url) {
-    console.log(`\nUploaded to R2: ${url}`);
+    console.log(`\nUploaded: ${url}`);
   } else {
     console.log(`\nLocal file: ${outPath}`);
   }
