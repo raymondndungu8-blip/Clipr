@@ -1,6 +1,6 @@
 # Fly.io config for the Clipr render service.
 # `fly launch`/`fly deploy` sets the app name; region/memory chosen for Remotion.
-app = "clipr-render"
+app = "clipr-rn-render"
 primary_region = "jnb"
 
 [build]

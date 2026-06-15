@@ -8,7 +8,7 @@
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { readFile, readdir, mkdir, rm } from "node:fs/promises";
-import { existsSync, copyFileSync } from "node:fs";
+import { existsSync, copyFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { bundle } from "@remotion/bundler";
 import { selectComposition, renderMedia } from "@remotion/renderer";
@@ -21,6 +21,30 @@ const SOURCES_DIR = path.join(ROOT, "public", "sources");
 const ENTRY = path.join(ROOT, "src", "index.ts");
 const YTDLP = process.env.YT_DLP_CMD || "python";
 const YTDLP_PREFIX = process.env.YT_DLP_CMD ? [] : ["-m", "yt_dlp"];
+
+// YouTube blocks plain web requests from datacenter IPs ("Sign in to confirm
+// you're not a bot"). Forcing alternate player clients (tv/ios/android) usually
+// bypasses that wall without cookies; if it doesn't, supply a Netscape cookies
+// file via the YT_DLP_COOKIES secret as a fallback.
+const PLAYER_CLIENTS = process.env.YT_PLAYER_CLIENTS || "tv,ios,android,web_safari";
+const COOKIES_PATH = "/tmp/yt-cookies.txt";
+let cookiesWritten = false;
+function cookieArgs() {
+  const raw = process.env.YT_DLP_COOKIES;
+  if (!raw) return [];
+  try {
+    if (!cookiesWritten) {
+      writeFileSync(COOKIES_PATH, raw.replace(/\\n/g, "\n"));
+      cookiesWritten = true;
+    }
+    return ["--cookies", COOKIES_PATH];
+  } catch {
+    return [];
+  }
+}
+function ytCommon() {
+  return ["--extractor-args", `youtube:player_client=${PLAYER_CLIENTS}`, ...cookieArgs()];
+}
 
 // Bundle once per process and reuse across renders (big speedup for a service).
 let cachedServeUrl = null;
@@ -100,6 +124,7 @@ async function download(url, start, end, sourceId) {
   let segmented = false;
   if (ffmpegDir) {
     const seg = runYtDlp([
+      ...ytCommon(),
       "-f",
       "bv*[height<=720]+ba/b[height<=720]/18/best[ext=mp4]",
       "--download-sections",
@@ -119,6 +144,7 @@ async function download(url, start, end, sourceId) {
   }
   if (!segmented) {
     const vid = runYtDlp([
+      ...ytCommon(),
       "-f",
       "18/best[ext=mp4][acodec!=none][vcodec!=none]/best[ext=mp4]",
       "--no-playlist",
@@ -136,6 +162,7 @@ async function download(url, start, end, sourceId) {
 
   // auto-captions (best-effort)
   runYtDlp([
+    ...ytCommon(),
     "--skip-download",
     "--write-auto-subs",
     "--sub-langs",
