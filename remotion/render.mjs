@@ -27,7 +27,8 @@ const compositionId = arg("id", "CaptionClip");
 const outPath = path.resolve(arg("out", `out/${compositionId}.mp4`));
 const propsArg = arg("props", "");
 const inputProps = propsArg ? JSON.parse(propsArg) : {};
-const r2Key = arg("key", `clips/${Date.now()}-${compositionId}.mp4`);
+// Object key/path within the bucket (don't prefix the bucket name).
+const r2Key = arg("key", `renders/${Date.now()}-${compositionId}.mp4`);
 
 // Upload to Supabase Storage (preferred — needs only the service-role key).
 async function uploadToSupabase(localPath) {
@@ -41,6 +42,9 @@ async function uploadToSupabase(localPath) {
   const res = await fetch(endpoint, {
     method: "POST",
     headers: {
+      // New sb_secret_ keys aren't JWTs — they must be sent as `apikey`
+      // (Bearer alone makes the API try to parse them as a JWT and fail).
+      apikey: serviceKey,
       Authorization: `Bearer ${serviceKey}`,
       "Content-Type": "video/mp4",
       "x-upsert": "true",
