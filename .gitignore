@@ -49,3 +49,5 @@ dev.log
 # remotion render output + cache
 remotion/out/
 remotion/.remotion/
+
+.vercel
