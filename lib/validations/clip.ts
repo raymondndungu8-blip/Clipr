@@ -36,6 +36,8 @@ export const ClipInputSchema = z
       .array(z.enum(["TikTok", "Instagram", "YouTube", "Facebook"]))
       .min(1)
       .max(4),
+    /** How many shorts/reels to clip (default 3). */
+    count: z.coerce.number().int().min(1).max(6).optional(),
   })
   .refine((data) => Boolean(data.url || data.topic), {
     message: "Provide a video URL or a topic.",

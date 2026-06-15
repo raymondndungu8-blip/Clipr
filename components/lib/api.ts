@@ -26,17 +26,18 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiPost<T = unknown>(
+export async function apiSend<T = unknown>(
   path: string,
-  body: unknown
+  method: "POST" | "DELETE" | "PUT",
+  body?: unknown
 ): Promise<T> {
   let res: Response;
   try {
     res = await fetch(path, {
-      method: "POST",
+      method,
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
     throw new ApiError("Network error. Check your connection and try again.", 0);
@@ -80,6 +81,14 @@ export async function apiPost<T = unknown>(
     payload.error ?? "Something went wrong. Please try again.",
     res.status || 500
   );
+}
+
+export function apiPost<T = unknown>(path: string, body: unknown): Promise<T> {
+  return apiSend<T>(path, "POST", body);
+}
+
+export function apiDelete<T = unknown>(path: string, body?: unknown): Promise<T> {
+  return apiSend<T>(path, "DELETE", body);
 }
 
 /** Minutes (rounded up, min 1) until a resetAt ISO timestamp. */

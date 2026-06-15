@@ -46,6 +46,7 @@ export default function ClipperPage() {
   const [topic, setTopic] = useState("");
   const [style, setStyle] = useState<(typeof STYLES)[number]>("Educational");
   const [platforms, setPlatforms] = useState<Platform[]>(["TikTok"]);
+  const [count, setCount] = useState(3);
 
   const [loading, setLoading] = useState(false);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
@@ -157,6 +158,7 @@ export default function ClipperPage() {
         topic: topic.trim() || undefined,
         style,
         platforms,
+        count,
       });
       subscribe(jobId);
     } catch (err) {
@@ -246,6 +248,31 @@ export default function ClipperPage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label>How many clips?</Label>
+            <div className="flex flex-wrap gap-2">
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setCount(n)}
+                  aria-pressed={count === n}
+                  className={cn(
+                    "size-9 rounded-full text-sm font-semibold transition-all active:scale-95",
+                    count === n
+                      ? "neo-inset text-clipr-gold"
+                      : "bg-clipr-card neo-raised-sm text-clipr-secondary hover:text-clipr-text"
+                  )}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-clipr-dim">
+              Number of shorts/reels to generate.
+            </p>
           </div>
 
           <div className="flex flex-col gap-2">

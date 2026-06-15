@@ -10,6 +10,7 @@ import {
   Send,
   LogOut,
   User,
+  Link2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import CliprLogo from "@/components/CliprLogo";
@@ -104,6 +105,12 @@ export default function DashboardLayout({
             >
               <DropdownMenuItem asChild>
                 <Link href="/dashboard">Dashboard</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/dashboard/connections">
+                  <Link2 className="size-4" />
+                  Connections
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onClick={signOut}>

@@ -6,6 +6,7 @@ export type LimiterKey =
   | "facelessGenerate"
   | "hookWrite"
   | "captionAnimate"
+  | "accountsManage"
   | "globalIp";
 
 export interface LimitResult {
@@ -53,6 +54,7 @@ function allNoop(reason: string): Record<LimiterKey, Limiter> {
     facelessGenerate: noop,
     hookWrite: noop,
     captionAnimate: noop,
+    accountsManage: noop,
     globalIp: noop,
   };
 }
@@ -96,6 +98,11 @@ export function getLimiters(): Record<LimiterKey, Limiter> {
         redis,
         limiter: Ratelimit.slidingWindow(20, "1 h"),
         prefix: "rl:cap",
+      }),
+      accountsManage: new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(60, "1 h"),
+        prefix: "rl:acct",
       }),
       globalIp: new Ratelimit({
         redis,

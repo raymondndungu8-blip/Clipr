@@ -124,14 +124,17 @@ export function StaggerItem({
 export function MotionCard({
   children,
   className,
+  interactive = true,
   ...rest
-}: HTMLMotionProps<"div">) {
+}: HTMLMotionProps<"div"> & { interactive?: boolean }) {
+  // `interactive` is a static prop (same on server + client) so gating on it is
+  // hydration-safe — unlike branching on useReducedMotion.
   return (
     <motion.div
       className={className}
       variants={fadeUp}
-      whileHover={hoverLift}
-      whileTap={pressScale}
+      whileHover={interactive ? hoverLift : undefined}
+      whileTap={interactive ? pressScale : undefined}
       {...rest}
     >
       {children}

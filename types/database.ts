@@ -224,6 +224,39 @@ export interface Database {
           },
         ];
       };
+      social_accounts: {
+        Row: {
+          id: string;
+          user_id: string;
+          platform: "TikTok" | "Instagram" | "YouTube" | "Facebook";
+          display_name: string;
+          profile_url: string | null;
+          external_id: string | null;
+          status: "connected" | "disconnected" | "error";
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          platform: "TikTok" | "Instagram" | "YouTube" | "Facebook";
+          display_name: string;
+          profile_url?: string | null;
+          external_id?: string | null;
+          status?: "connected" | "disconnected" | "error";
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          platform?: "TikTok" | "Instagram" | "YouTube" | "Facebook";
+          display_name?: string;
+          profile_url?: string | null;
+          external_id?: string | null;
+          status?: "connected" | "disconnected" | "error";
+          created_at?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

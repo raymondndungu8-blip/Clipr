@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ImageIcon } from "lucide-react";
+import Link from "next/link";
+import { ImageIcon, Link2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
 import type { Tables } from "@/types/database";
 import {
   Select,
@@ -122,7 +124,13 @@ export default function PostsPage() {
             Your scheduled and sent posts.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/dashboard/connections">
+              <Link2 className="size-3.5" />
+              Manage connections
+            </Link>
+          </Button>
           <Select
             value={platformFilter}
             onValueChange={(v) => setPlatformFilter(v as PlatformFilter)}

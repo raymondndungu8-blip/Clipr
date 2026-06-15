@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { url, topic, style, platforms } = parsed.data;
+  const count = parsed.data.count ?? 3;
 
   try {
     // 1. Create the job (RLS applies — request-scoped client)
@@ -63,10 +64,10 @@ export async function POST(req: NextRequest) {
     const clipsJson = await generateJSON<ClipMeta[]>({
       system:
         "You are a viral short-form video producer. Return valid JSON only.",
-      prompt: `Create exactly 3 viral short-form clip concepts for ${source}.
+      prompt: `Create exactly ${count} viral short-form clip concept${count === 1 ? "" : "s"} for ${source}.
 Style: ${style}. Target platforms: ${platforms.join(", ")}.
 
-Return a JSON array of exactly 3 objects, each with:
+Return a JSON array of exactly ${count} objects, each with:
 - "title": punchy clip title (under 60 chars)
 - "hook": scroll-stopping first line spoken on screen
 - "description": 1 short post description tailored to the platforms
@@ -74,11 +75,11 @@ Return a JSON array of exactly 3 objects, each with:
 - "hashtags": array of exactly 5 relevant hashtags (with #)
 - "duration": clip length as "0:NN" (e.g. "0:34"), between 15 and 60 seconds
 - "startSeconds": integer start time (in seconds) of this moment within the source video
-- "endSeconds": integer end time (in seconds); endSeconds - startSeconds must equal the duration. Pick 3 different, non-overlapping moments spread across a typical 8-15 minute video.
+- "endSeconds": integer end time (in seconds); endSeconds - startSeconds must equal the duration. Pick ${count} different, non-overlapping moments spread across a typical 8-15 minute video.
 - "bgGradient": a dark CSS linear-gradient string suited to the mood (e.g. "linear-gradient(135deg, #0f0c29, #302b63)")
 
 Return ONLY the JSON array. No markdown, no commentary.`,
-      maxTokens: 1800,
+      maxTokens: Math.max(1800, count * 700),
     });
 
     if (!Array.isArray(clipsJson) || clipsJson.length === 0) {
@@ -87,7 +88,7 @@ Return ONLY the JSON array. No markdown, no commentary.`,
 
     // 3. Persist clips
     const { error: clipsError } = await supabase.from("clips").insert(
-      clipsJson.slice(0, 3).map((clip) => ({
+      clipsJson.slice(0, count).map((clip) => ({
         job_id: job.id,
         title: clip.title,
         hook: clip.hook,
