@@ -19,7 +19,10 @@
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); c=d.get\\('result',{}\\).get\\('content',[{}]\\); print\\('keys:', list\\(json.loads\\(c[0]['text']\\).keys\\(\\)\\) if c and c[0].get\\('text',''\\).startswith\\('{'\\) else 'TEXT: '+str\\(c[0].get\\('text',''\\)\\)[:200] if c else json.dumps\\(d\\)[:300]\\)\")",
       "mcp__Claude_in_Chrome__list_connected_browsers",
       "Bash(timeout 90 npx -y @21st-dev/magic@latest --help)",
-      "Bash(echo \"=== exit: $? ===\")"
+      "Bash(echo \"=== exit: $? ===\")",
+      "mcp__11047f58-9b2a-4281-9ca1-d5f470070a16__list_drafts",
+      "WebSearch",
+      "mcp__a5b62727-7216-4138-91ff-a23c460f69f2__apply_migration"
     ]
   }
 }
