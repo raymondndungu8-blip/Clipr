@@ -22,7 +22,17 @@
       "Bash(echo \"=== exit: $? ===\")",
       "mcp__11047f58-9b2a-4281-9ca1-d5f470070a16__list_drafts",
       "WebSearch",
-      "mcp__a5b62727-7216-4138-91ff-a23c460f69f2__apply_migration"
+      "mcp__a5b62727-7216-4138-91ff-a23c460f69f2__apply_migration",
+      "WebFetch(domain:docs.zernio.com)",
+      "mcp__Claude_in_Chrome__navigate",
+      "mcp__Claude_in_Chrome__computer",
+      "mcp__Claude_in_Chrome__get_page_text",
+      "mcp__Claude_in_Chrome__read_page",
+      "mcp__Claude_in_Chrome__find",
+      "mcp__a5b62727-7216-4138-91ff-a23c460f69f2__execute_sql",
+      "mcp__53cdd396-ee99-44fc-8ba3-c065cc261814__deploy_to_vercel",
+      "mcp__53cdd396-ee99-44fc-8ba3-c065cc261814__get_deployment_build_logs",
+      "Bash([ -s \"$f\" ])"
     ]
   }
 }
