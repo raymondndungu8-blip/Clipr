@@ -1,61 +1,88 @@
-import Anthropic from "@anthropic-ai/sdk";
+// LLM helper — talks to an OpenAI-compatible chat-completions endpoint.
+// Defaults to NVIDIA NIM (https://integrate.api.nvidia.com/v1), which offers a
+// free tier and hosts Llama / Qwen / Nemotron / etc. Swap LLM_BASE_URL +
+// LLM_MODEL + the matching key to use any other OpenAI-compatible provider.
+// (File kept as lib/anthropic.ts so existing route imports don't change.)
 
-const MODEL = "claude-sonnet-4-6";
+const BASE_URL =
+  process.env.LLM_BASE_URL || "https://integrate.api.nvidia.com/v1";
+const MODEL = process.env.LLM_MODEL || "meta/llama-3.3-70b-instruct";
 
-let client: Anthropic | null = null;
-
-function getClient(): Anthropic {
-  if (!client) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey || apiKey.includes("...")) {
-      throw new Error(
-        "ANTHROPIC_API_KEY is not configured — set a real key in .env.local."
-      );
-    }
-    client = new Anthropic({ apiKey });
+function getApiKey(): string {
+  const key = process.env.NVIDIA_API_KEY || process.env.LLM_API_KEY;
+  if (!key || key.includes("...")) {
+    throw new Error(
+      "LLM is not configured — set NVIDIA_API_KEY (or LLM_API_KEY) in .env.local."
+    );
   }
-  return client;
+  return key;
 }
 
-/** Strip ```json ... ``` / ``` ... ``` fences Claude sometimes wraps output in. */
-function stripMarkdownFences(text: string): string {
+/** Strip ```json ... ``` fences and any <think>…</think> reasoning blocks. */
+function cleanModelOutput(text: string): string {
   let out = text.trim();
+  // Remove reasoning traces some models emit before the answer.
+  out = out.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
   if (out.startsWith("```")) {
     out = out.replace(/^```[a-zA-Z]*\s*\n?/, "");
     out = out.replace(/\n?```\s*$/, "");
   }
+  // If there's prose around the JSON, grab the outermost JSON object/array.
+  if (!out.startsWith("{") && !out.startsWith("[")) {
+    const match = out.match(/[[{][\s\S]*[\]}]/);
+    if (match) out = match[0];
+  }
   return out.trim();
 }
 
+interface ChatCompletion {
+  choices?: { message?: { content?: string } }[];
+  error?: unknown;
+}
+
 /**
- * Ask Claude for JSON and parse it. Throws a descriptive error if the
- * response is not valid JSON — callers should wrap in try/catch and map
- * failures to a 500 without leaking details to the client.
+ * Ask the model for JSON and parse it. Throws a descriptive error on a non-2xx
+ * response or unparseable JSON — callers wrap in try/catch and map failures to
+ * a 500 without leaking details to the client.
  */
 export async function generateJSON<T>(opts: {
   system: string;
   prompt: string;
   maxTokens?: number;
 }): Promise<T> {
-  const response = await getClient().messages.create({
-    model: MODEL,
-    max_tokens: opts.maxTokens ?? 4096,
-    system: opts.system,
-    messages: [{ role: "user", content: opts.prompt }],
+  const res = await fetch(`${BASE_URL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${getApiKey()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [
+        { role: "system", content: opts.system },
+        { role: "user", content: opts.prompt },
+      ],
+      temperature: 0.8,
+      top_p: 0.9,
+      max_tokens: opts.maxTokens ?? 4096,
+      stream: false,
+    }),
   });
 
-  const text = response.content
-    .filter((block): block is Anthropic.TextBlock => block.type === "text")
-    .map((block) => block.text)
-    .join("");
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`LLM request failed (${res.status}): ${detail.slice(0, 300)}`);
+  }
 
-  const cleaned = stripMarkdownFences(text);
+  const data = (await res.json()) as ChatCompletion;
+  const text = data.choices?.[0]?.message?.content ?? "";
+  const cleaned = cleanModelOutput(text);
 
   try {
     return JSON.parse(cleaned) as T;
   } catch {
     throw new Error(
-      `Claude returned invalid JSON (first 200 chars): ${cleaned.slice(0, 200)}`
+      `LLM returned invalid JSON (first 200 chars): ${cleaned.slice(0, 200)}`
     );
   }
 }
