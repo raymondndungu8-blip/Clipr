@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { clipId, videoId, platforms, caption, scheduledAt } = parsed.data;
+  const { clipId, videoId, platforms, accountIds, caption, scheduledAt } =
+    parsed.data;
 
   try {
     // 1. Resolve the media URL from the owned clip / video (RLS-scoped client).
@@ -58,14 +59,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Resolve the selected platforms to connected Zernio accounts.
-    const wanted = new Set(platforms.map((p) => ZERNIO_PLATFORM[p]));
+    // 2. Resolve target accounts: specific account ids if given, else by platform.
     let targets: { platform: string; accountId: string }[] = [];
     try {
       const accounts = await listAccounts();
-      targets = accounts
-        .filter((a) => wanted.has(a.platform))
-        .map((a) => ({ platform: a.platform, accountId: a.id }));
+      if (accountIds && accountIds.length > 0) {
+        const chosen = new Set(accountIds);
+        targets = accounts
+          .filter((a) => chosen.has(a.id))
+          .map((a) => ({ platform: a.platform, accountId: a.id }));
+      } else {
+        const wanted = new Set((platforms ?? []).map((p) => ZERNIO_PLATFORM[p]));
+        targets = accounts
+          .filter((a) => wanted.has(a.platform))
+          .map((a) => ({ platform: a.platform, accountId: a.id }));
+      }
     } catch (err) {
       console.error("[api/post] could not list Zernio accounts:", err);
       return NextResponse.json(
@@ -78,11 +86,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "No connected accounts for the selected platforms. Connect them on the Connections page first.",
+            "No connected accounts to post to. Connect your pages on the Connections page first.",
         },
         { status: 422 }
       );
     }
+
+    // Platform names to record on the post row.
+    const platformNames =
+      platforms && platforms.length > 0
+        ? platforms
+        : [...new Set(targets.map((t) => t.platform))];
 
     // 3. Record the post as queued.
     const { data: post, error: insertError } = await supabase
@@ -91,7 +105,7 @@ export async function POST(req: NextRequest) {
         user_id: user.id,
         clip_id: clipId ?? null,
         video_id: videoId ?? null,
-        platforms,
+        platforms: platformNames,
         caption,
         scheduled_at: scheduledAt ?? null,
         status: "queued",
