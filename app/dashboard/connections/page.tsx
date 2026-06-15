@@ -1,21 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { MonitorPlay, Camera, Users, Music2, Plus, X, Link2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import type { Tables } from "@/types/database";
+import {
+  MonitorPlay,
+  Camera,
+  Users,
+  Music2,
+  Plus,
+  RefreshCw,
+  ExternalLink,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { PLATFORMS, PLATFORM_COLORS, type Platform } from "@/components/PlatformPill";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import {
   PageTransition,
   FadeIn,
@@ -23,10 +21,14 @@ import {
   StaggerItem,
   MotionCard,
 } from "@/components/motion";
-import { apiPost, apiDelete, ApiError, type FieldIssues } from "@/components/lib/api";
-import type { LucideIcon } from "lucide-react";
+import { apiGet, apiPost, ApiError } from "@/components/lib/api";
 
-type Account = Tables<"social_accounts">;
+type ZernioAccount = {
+  id: string;
+  platform: string;
+  username?: string;
+  name?: string;
+};
 
 const PLATFORM_ICON: Record<Platform, LucideIcon> = {
   YouTube: MonitorPlay,
@@ -35,101 +37,100 @@ const PLATFORM_ICON: Record<Platform, LucideIcon> = {
   Facebook: Users,
 };
 
-const PLATFORM_HINT: Record<Platform, string> = {
-  YouTube: "Channel name or @handle",
-  TikTok: "@username",
-  Instagram: "@username",
-  Facebook: "Page name",
+/** Clipr platform name → Zernio platform slug. */
+const PLATFORM_SLUG: Record<Platform, string> = {
+  TikTok: "tiktok",
+  Instagram: "instagram",
+  YouTube: "youtube",
+  Facebook: "facebook",
 };
 
 export default function ConnectionsPage() {
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accounts, setAccounts] = useState<ZernioAccount[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [dialogPlatform, setDialogPlatform] = useState<Platform | null>(null);
-  const [displayName, setDisplayName] = useState("");
-  const [profileUrl, setProfileUrl] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<FieldIssues>({});
-
-  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
-  function getSupabase() {
-    if (!supabaseRef.current) supabaseRef.current = createClient();
-    return supabaseRef.current;
-  }
+  const [refreshing, setRefreshing] = useState(false);
+  const [connecting, setConnecting] = useState<Platform | null>(null);
 
   async function loadAccounts() {
-    const { data } = await getSupabase()
-      .from("social_accounts")
-      .select("*")
-      .order("created_at", { ascending: true });
-    setAccounts(data ?? []);
-    setLoaded(true);
-  }
-
-  useEffect(() => {
-    loadAccounts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function openDialog(platform: Platform) {
-    setDialogPlatform(platform);
-    setDisplayName("");
-    setProfileUrl("");
-    setFieldErrors({});
-  }
-
-  async function onConnect() {
-    if (!dialogPlatform) return;
-    setSaving(true);
-    setFieldErrors({});
+    setRefreshing(true);
     try {
-      const { account } = await apiPost<{ account: Account }>("/api/accounts", {
-        platform: dialogPlatform,
-        displayName: displayName.trim(),
-        profileUrl: profileUrl.trim() || undefined,
-      });
-      setAccounts((prev) => [...prev, account]);
-      toast.success(`${dialogPlatform} page connected.`);
-      setDialogPlatform(null);
+      const { accounts } = await apiGet<{ accounts: ZernioAccount[] }>(
+        "/api/zernio/accounts"
+      );
+      setAccounts(accounts ?? []);
     } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.status === 422) setFieldErrors(err.issues ?? {});
-        else toast.error(err.message);
-      } else {
-        toast.error("Couldn't connect that page.");
+      if (err instanceof ApiError && err.status !== 401) {
+        toast.error("Couldn't load connected accounts.");
       }
     } finally {
-      setSaving(false);
+      setRefreshing(false);
+      setLoaded(true);
     }
   }
 
-  async function onDisconnect(account: Account) {
-    const prev = accounts;
-    setAccounts((a) => a.filter((x) => x.id !== account.id));
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const { accounts } = await apiGet<{ accounts: ZernioAccount[] }>(
+          "/api/zernio/accounts"
+        );
+        if (active) setAccounts(accounts ?? []);
+      } catch (err) {
+        if (active && err instanceof ApiError && err.status !== 401) {
+          toast.error("Couldn't load connected accounts.");
+        }
+      } finally {
+        if (active) setLoaded(true);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function connect(platform: Platform) {
+    setConnecting(platform);
     try {
-      await apiDelete("/api/accounts", { id: account.id });
-      toast.success("Page disconnected.");
-    } catch {
-      setAccounts(prev);
-      toast.error("Couldn't disconnect that page.");
+      const { authUrl } = await apiPost<{ authUrl: string }>(
+        "/api/zernio/connect",
+        { platform }
+      );
+      // Open the platform's OAuth screen in a new tab.
+      window.open(authUrl, "_blank", "noopener,noreferrer");
+      toast.success(
+        `Authorize ${platform} in the new tab, then hit Refresh here.`
+      );
+    } catch (err) {
+      if (err instanceof ApiError) toast.error(err.message);
+      else toast.error("Couldn't start the connection.");
+    } finally {
+      setConnecting(null);
     }
   }
 
   return (
     <PageTransition className="flex flex-col gap-6">
-      <FadeIn>
-        <h1 className="text-2xl font-semibold text-clipr-text">Connections</h1>
-        <p className="text-sm text-clipr-secondary">
-          Add the social pages you post to. Clipr publishes your clips and reels
-          to the pages you connect here.
-        </p>
+      <FadeIn className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold text-clipr-text">Connections</h1>
+          <p className="text-sm text-clipr-secondary">
+            Connect your social pages so Clipr can post clips and reels to them.
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={loadAccounts} disabled={refreshing}>
+          {refreshing ? <span className="clipr-spinner" /> : <RefreshCw className="size-3.5" />}
+          Refresh
+        </Button>
       </FadeIn>
 
       <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {PLATFORMS.map((platform) => {
           const Icon = PLATFORM_ICON[platform];
           const color = PLATFORM_COLORS[platform];
-          const connected = accounts.filter((a) => a.platform === platform);
+          const connected = accounts.filter(
+            (a) => a.platform === PLATFORM_SLUG[platform]
+          );
           return (
             <StaggerItem key={platform}>
               <MotionCard
@@ -149,17 +150,22 @@ export default function ConnectionsPage() {
                       <p className="text-xs text-clipr-dim">
                         {connected.length === 0
                           ? "Not connected"
-                          : `${connected.length} page${connected.length === 1 ? "" : "s"} connected`}
+                          : `${connected.length} account${connected.length === 1 ? "" : "s"} connected`}
                       </p>
                     </div>
                   </div>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => openDialog(platform)}
+                    onClick={() => connect(platform)}
+                    disabled={connecting === platform}
                   >
-                    <Plus className="size-3.5" />
-                    Add page
+                    {connecting === platform ? (
+                      <span className="clipr-spinner" />
+                    ) : (
+                      <Plus className="size-3.5" />
+                    )}
+                    Connect
                   </Button>
                 </div>
 
@@ -168,33 +174,12 @@ export default function ConnectionsPage() {
                     {connected.map((acct) => (
                       <li
                         key={acct.id}
-                        className="flex items-center justify-between gap-2 rounded-xl neo-inset px-3 py-2"
+                        className="flex items-center gap-2 rounded-xl neo-inset px-3 py-2"
                       >
-                        <span className="flex min-w-0 items-center gap-2">
-                          <span className="size-2 shrink-0 rounded-full bg-clipr-success" />
-                          <span className="truncate text-sm text-clipr-text">
-                            {acct.display_name}
-                          </span>
-                          {acct.profile_url && (
-                            <a
-                              href={acct.profile_url}
-                              target="_blank"
-                              rel="noreferrer noopener"
-                              className="text-clipr-dim hover:text-clipr-gold"
-                              aria-label="Open profile"
-                            >
-                              <Link2 className="size-3.5" />
-                            </a>
-                          )}
+                        <span className="size-2 shrink-0 rounded-full bg-clipr-success" />
+                        <span className="truncate text-sm text-clipr-text">
+                          {acct.username || acct.name || acct.id}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => onDisconnect(acct)}
-                          aria-label={`Disconnect ${acct.display_name}`}
-                          className="shrink-0 rounded-full p-1 text-clipr-dim transition-colors hover:text-clipr-error"
-                        >
-                          <X className="size-4" />
-                        </button>
                       </li>
                     ))}
                   </ul>
@@ -207,77 +192,18 @@ export default function ConnectionsPage() {
 
       {loaded && accounts.length === 0 && (
         <p className="text-center text-sm text-clipr-dim">
-          No pages connected yet — add one above to start posting.
+          No accounts connected yet — hit Connect on a platform to authorize it.
         </p>
       )}
 
-      <p className="rounded-xl neo-inset px-4 py-3 text-xs text-clipr-secondary">
-        Adding a page here registers it in Clipr so you can target it when
-        posting. One-click platform sign-in (OAuth) is coming next — it requires
-        each platform&apos;s app approval.
-      </p>
-
-      <Dialog
-        open={dialogPlatform !== null}
-        onOpenChange={(open) => !open && setDialogPlatform(null)}
-      >
-        <DialogContent className="rounded-2xl border-none bg-clipr-card shadow-none neo-raised">
-          <DialogHeader>
-            <DialogTitle>
-              Connect a {dialogPlatform} page
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-4 py-2">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="acct-name">
-                {dialogPlatform ? PLATFORM_HINT[dialogPlatform] : "Page name"}
-              </Label>
-              <Input
-                id="acct-name"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder={
-                  dialogPlatform ? PLATFORM_HINT[dialogPlatform] : "Your page"
-                }
-                aria-invalid={!!fieldErrors.displayName}
-              />
-              {fieldErrors.displayName && (
-                <p className="text-xs text-clipr-error">
-                  {fieldErrors.displayName[0]}
-                </p>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="acct-url">Profile URL (optional)</Label>
-              <Input
-                id="acct-url"
-                value={profileUrl}
-                onChange={(e) => setProfileUrl(e.target.value)}
-                placeholder="https://…"
-                aria-invalid={!!fieldErrors.profileUrl}
-              />
-              {fieldErrors.profileUrl && (
-                <p className="text-xs text-clipr-error">
-                  {fieldErrors.profileUrl[0]}
-                </p>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDialogPlatform(null)}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-            <Button onClick={onConnect} disabled={saving || !displayName.trim()}>
-              {saving && <span className="clipr-spinner" />}
-              {saving ? "Connecting…" : "Connect"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <div className="flex items-start gap-2 rounded-xl neo-inset px-4 py-3 text-xs text-clipr-secondary">
+        <ExternalLink className="mt-0.5 size-3.5 shrink-0 text-clipr-dim" />
+        <span>
+          Connect opens the platform&apos;s secure sign-in (via Zernio) in a new
+          tab. After you authorize, come back and hit Refresh. Posting targets
+          the accounts shown here.
+        </span>
+      </div>
     </PageTransition>
   );
 }

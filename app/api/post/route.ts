@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardRoute } from "@/lib/apiGuard";
 import { PostInputSchema } from "@/lib/validations/post";
+import { createPost, listAccounts, ZERNIO_PLATFORM } from "@/lib/zernio";
 import type { Json } from "@/types/database";
 
 export async function POST(req: NextRequest) {
@@ -57,7 +58,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Record the post as queued.
+    // 2. Resolve the selected platforms to connected Zernio accounts.
+    const wanted = new Set(platforms.map((p) => ZERNIO_PLATFORM[p]));
+    let targets: { platform: string; accountId: string }[] = [];
+    try {
+      const accounts = await listAccounts();
+      targets = accounts
+        .filter((a) => wanted.has(a.platform))
+        .map((a) => ({ platform: a.platform, accountId: a.id }));
+    } catch (err) {
+      console.error("[api/post] could not list Zernio accounts:", err);
+      return NextResponse.json(
+        { error: "Couldn't reach the posting service. Try again." },
+        { status: 502 }
+      );
+    }
+
+    if (targets.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            "No connected accounts for the selected platforms. Connect them on the Connections page first.",
+        },
+        { status: 422 }
+      );
+    }
+
+    // 3. Record the post as queued.
     const { data: post, error: insertError } = await supabase
       .from("posts")
       .insert({
@@ -77,37 +104,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Post failed" }, { status: 500 });
     }
 
-    // 3. Dispatch to Zernio.
-    const apiKey = process.env.ZERNIO_API_KEY;
+    // 4. Dispatch to Zernio.
     let status: "posted" | "failed" = "failed";
     let zernioResponse: Json = null;
 
-    if (apiKey) {
-      try {
-        const res = await fetch("https://api.zernio.com/v1/posts", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            platforms,
-            media_url: mediaUrl,
-            caption,
-            scheduled_at: scheduledAt || undefined,
-          }),
-        });
-        zernioResponse = (await res.json().catch(() => null)) as Json;
-        status = res.ok ? "posted" : "failed";
-      } catch (err) {
-        console.error("[api/post] Zernio request failed:", err);
-        zernioResponse = { error: "Zernio request failed" };
-      }
-    } else {
-      zernioResponse = { error: "ZERNIO_API_KEY not configured" };
+    try {
+      const result = await createPost({
+        content: caption,
+        mediaUrls: [mediaUrl],
+        platforms: targets,
+        scheduledFor: scheduledAt || undefined,
+      });
+      zernioResponse = (result ?? null) as Json;
+      status = "posted";
+    } catch (err) {
+      console.error("[api/post] Zernio request failed:", err);
+      zernioResponse = {
+        error: err instanceof Error ? err.message : "Zernio request failed",
+      };
     }
 
-    // 4. Finalize.
+    // 5. Finalize.
     await supabase
       .from("posts")
       .update({

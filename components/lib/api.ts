@@ -28,7 +28,7 @@ export class ApiError extends Error {
 
 export async function apiSend<T = unknown>(
   path: string,
-  method: "POST" | "DELETE" | "PUT",
+  method: "GET" | "POST" | "DELETE" | "PUT",
   body?: unknown
 ): Promise<T> {
   let res: Response;
@@ -81,6 +81,10 @@ export async function apiSend<T = unknown>(
     payload.error ?? "Something went wrong. Please try again.",
     res.status || 500
   );
+}
+
+export function apiGet<T = unknown>(path: string): Promise<T> {
+  return apiSend<T>(path, "GET");
 }
 
 export function apiPost<T = unknown>(path: string, body: unknown): Promise<T> {
