@@ -1,19 +1,22 @@
-// Real-footage clip pipeline: download the source video + YouTube auto-captions
-// with yt-dlp, render the trimmed 9:16 segment with synced captions (SourceClip),
-// and upload to Supabase Storage / R2.
+// Real-footage clip pipeline: download ONLY the needed segment of the source
+// video with yt-dlp (+ bundled ffmpeg) and its YouTube auto-captions, render the
+// trimmed 9:16 segment with synced captions (SourceClip), and upload.
 //
 // Usage:
 //   node render-source.mjs --url <yt-url> --start 30 --end 55 \
 //     --id <sourceId> --key clips/<id>.mp4 [--hook "..."] [--accent "#3d7bff"]
 //
-// Requires yt-dlp (installed; callable as `python -m yt_dlp`).
+// Requires yt-dlp (callable as `python -m yt_dlp`); ffmpeg is provided by the
+// bundled ffmpeg-static package, so no system ffmpeg is needed.
 
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { readFile, readdir, mkdir, rm } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, copyFileSync } from "node:fs";
 import { bundle } from "@remotion/bundler";
 import { selectComposition, renderMedia } from "@remotion/renderer";
+import ffmpegPath from "ffmpeg-static";
+import ffprobeStatic from "ffprobe-static";
 import { uploadVideo } from "./lib/upload.mjs";
 
 function arg(name, fallback) {
@@ -24,6 +27,7 @@ function arg(name, fallback) {
 const url = arg("url", "");
 const start = parseFloat(arg("start", "0"));
 const end = parseFloat(arg("end", "30"));
+const clipLen = Math.max(1, end - start);
 const sourceId = arg("id", `src-${Date.now()}`);
 const storageKey = arg("key", `clips/${sourceId}.mp4`);
 const hook = arg("hook", "");
@@ -38,7 +42,20 @@ const SOURCES_DIR = path.resolve("public/sources");
 const YTDLP = process.env.YT_DLP_CMD || "python";
 const YTDLP_ARGS_PREFIX = process.env.YT_DLP_CMD ? [] : ["-m", "yt_dlp"];
 
-/** Parse a WEBVTT timestamp (HH:MM:SS.mmm or MM:SS.mmm) to seconds. */
+/** Directory containing both ffmpeg and ffprobe, for yt-dlp --ffmpeg-location. */
+function ensureFfmpegDir() {
+  if (!ffmpegPath) return null;
+  const dir = path.dirname(ffmpegPath);
+  try {
+    const probeName = path.basename(ffprobeStatic.path);
+    const dest = path.join(dir, probeName);
+    if (!existsSync(dest)) copyFileSync(ffprobeStatic.path, dest);
+  } catch {
+    /* ffprobe is optional for section downloads */
+  }
+  return dir;
+}
+
 function tsToSeconds(ts) {
   const parts = ts.trim().split(":").map(Number);
   if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
@@ -46,7 +63,6 @@ function tsToSeconds(ts) {
   return Number(ts) || 0;
 }
 
-/** Parse a VTT file into [{start,end,text}] cues, stripping inline tags. */
 function parseVtt(content) {
   const cues = [];
   const blocks = content.replace(/\r/g, "").split("\n\n");
@@ -59,7 +75,7 @@ function parseVtt(content) {
       .filter((l) => l && !l.includes("-->") && l !== "WEBVTT" && !/^\d+$/.test(l));
     const text = textLines
       .join(" ")
-      .replace(/<[^>]+>/g, "") // strip <c>/<00:00:00.000> tags
+      .replace(/<[^>]+>/g, "")
       .replace(/\s+/g, " ")
       .trim();
     if (text) cues.push({ start: tsToSeconds(s), end: tsToSeconds(e), text });
@@ -67,18 +83,17 @@ function parseVtt(content) {
   return cues;
 }
 
-/** Build segment-relative caption cues, deduped, clamped to the clip length. */
+/** Build segment-relative caption cues (filtered to [start,end], offset by -start). */
 function buildCaptions(cues) {
   const out = [];
   let lastText = "";
   for (const c of cues) {
     if (c.end <= start || c.start >= end) continue;
     const rs = Math.max(0, c.start - start);
-    const re = Math.min(end - start, c.end - start);
+    const re = Math.min(clipLen, c.end - start);
     if (re - rs < 0.1) continue;
     const text = c.text.toUpperCase();
     if (text === lastText) {
-      // extend the previous cue rather than repeating (rolling captions)
       if (out.length) out[out.length - 1].end = re;
       continue;
     }
@@ -98,27 +113,56 @@ function runYtDlp(extra) {
 async function download() {
   await mkdir(SOURCES_DIR, { recursive: true });
   const outTemplate = path.join(SOURCES_DIR, `${sourceId}.%(ext)s`);
+  const ffmpegDir = ensureFfmpegDir();
 
-  // 1. Video — required (progressive mp4, no ffmpeg merge needed).
-  console.log("Downloading source video…");
-  const vid = runYtDlp([
-    "-f",
-    "18/best[ext=mp4][acodec!=none][vcodec!=none]/best[ext=mp4]",
-    "--no-playlist",
-    "--no-warnings",
-    "-o",
-    outTemplate,
-    url,
-  ]);
-  if (vid.status !== 0) {
-    throw new Error(
-      `yt-dlp video download failed: ${(vid.stderr || vid.stdout || "").slice(-400)}`
-    );
+  // 1. Video — try a fast SEGMENT-ONLY download with bundled ffmpeg.
+  let segmented = false;
+  if (ffmpegDir) {
+    console.log(`Downloading segment ${start}s–${end}s…`);
+    const seg = runYtDlp([
+      "-f",
+      "bv*[height<=720]+ba/b[height<=720]/18/best[ext=mp4]",
+      "--download-sections",
+      `*${start}-${end}`,
+      "--force-keyframes-at-cuts",
+      "--ffmpeg-location",
+      ffmpegDir,
+      "--no-playlist",
+      "--no-warnings",
+      "--merge-output-format",
+      "mp4",
+      "-o",
+      outTemplate,
+      url,
+    ]);
+    segmented = seg.status === 0;
+    if (!segmented) {
+      console.log(
+        `Segment download failed, falling back to full download: ${(seg.stderr || "").slice(-200)}`
+      );
+    }
   }
 
-  // 2. Auto-captions — best-effort (YouTube throttles the subtitle endpoint;
-  // a failure here must not abort the clip). Narrow langs to avoid pulling
-  // dozens of auto-translated tracks.
+  // 2. Fallback — full progressive download (trim happens in Remotion).
+  if (!segmented) {
+    console.log("Downloading source video (full)…");
+    const vid = runYtDlp([
+      "-f",
+      "18/best[ext=mp4][acodec!=none][vcodec!=none]/best[ext=mp4]",
+      "--no-playlist",
+      "--no-warnings",
+      "-o",
+      outTemplate,
+      url,
+    ]);
+    if (vid.status !== 0) {
+      throw new Error(
+        `yt-dlp video download failed: ${(vid.stderr || vid.stdout || "").slice(-400)}`
+      );
+    }
+  }
+
+  // 3. Auto-captions — best-effort.
   console.log("Fetching auto-captions (best-effort)…");
   const sub = runYtDlp([
     "--skip-download",
@@ -141,11 +185,12 @@ async function download() {
   const mp4 = files.find((f) => f.startsWith(sourceId) && f.endsWith(".mp4"));
   const vtt = files.find((f) => f.startsWith(sourceId) && f.endsWith(".vtt"));
   if (!mp4) {
-    throw new Error("yt-dlp did not produce an mp4 (progressive format unavailable?)");
+    throw new Error("yt-dlp did not produce an mp4 (format unavailable?)");
   }
   return {
     videoRel: `sources/${mp4}`,
     vttPath: vtt ? path.join(SOURCES_DIR, vtt) : null,
+    segmented,
   };
 }
 
@@ -163,7 +208,7 @@ async function cleanup() {
 }
 
 async function main() {
-  const { videoRel, vttPath } = await download();
+  const { videoRel, vttPath, segmented } = await download();
 
   let captions = [];
   if (vttPath && existsSync(vttPath)) {
@@ -173,10 +218,11 @@ async function main() {
     console.log("No auto-captions found — rendering footage without captions.");
   }
 
+  // When segmented, the file already starts at the cut, so trim from 0.
   const inputProps = {
     videoSrc: videoRel,
-    startSeconds: start,
-    endSeconds: end,
+    startSeconds: segmented ? 0 : start,
+    endSeconds: segmented ? clipLen : end,
     hook,
     captions,
     accent,
