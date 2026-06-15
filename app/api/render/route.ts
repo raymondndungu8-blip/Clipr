@@ -48,6 +48,49 @@ export async function POST(req: NextRequest) {
     typeof clip.end_seconds === "number" &&
     clip.end_seconds > clip.start_seconds;
 
+  // Production: dispatch to the deployed render worker (Fly). It renders + uploads
+  // and writes clip.r2_url when done; the client polls for it.
+  const workerUrl = process.env.WORKER_URL;
+  if (workerUrl && !workerUrl.includes("your-worker")) {
+    if (!(youtubeId && hasSegment && job?.source_url)) {
+      return NextResponse.json(
+        {
+          error:
+            "Real rendering needs a YouTube source URL. Topic-only clips show the styled preview.",
+        },
+        { status: 422 }
+      );
+    }
+    try {
+      const res = await fetch(`${workerUrl}/render`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-worker-secret": process.env.WORKER_SECRET ?? "",
+        },
+        body: JSON.stringify({
+          clipId: clip.id,
+          url: job.source_url,
+          start: clip.start_seconds,
+          end: clip.end_seconds,
+          hook: clip.hook ?? "",
+          key: `clips/${clip.id}.mp4`,
+        }),
+      });
+      if (!res.ok && res.status !== 202) {
+        throw new Error(`worker responded ${res.status}`);
+      }
+      return NextResponse.json({ status: "rendering" });
+    } catch (err) {
+      console.error("[api/render] worker dispatch failed:", err);
+      return NextResponse.json(
+        { error: "Couldn't reach the render service. Try again." },
+        { status: 502 }
+      );
+    }
+  }
+
+  // Local dev (no worker): render in-process and return the URL.
   try {
     let url: string;
 

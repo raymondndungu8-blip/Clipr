@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Copy, Send, Clapperboard } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/types/database";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import VideoPreview, { youtubeIdFromUrl } from "@/components/VideoPreview";
 import PostDialog from "@/components/PostDialog";
@@ -23,14 +24,48 @@ export default function ClipCard({
   const [rendering, setRendering] = useState(false);
   const youtubeId = youtubeIdFromUrl(sourceUrl);
 
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
+  function getSupabase() {
+    if (!supabaseRef.current) supabaseRef.current = createClient();
+    return supabaseRef.current;
+  }
+
+  // Poll the clip row until the worker writes the rendered MP4 URL.
+  async function pollForRender(): Promise<string | null> {
+    const deadline = Date.now() + 5 * 60 * 1000;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const { data } = await getSupabase()
+        .from("clips")
+        .select("r2_url")
+        .eq("id", clip.id)
+        .single();
+      if (data?.r2_url) return data.r2_url;
+    }
+    return null;
+  }
+
   async function renderVideo() {
     setRendering(true);
     try {
-      const { url } = await apiPost<{ url: string }>("/api/render", {
-        clipId: clip.id,
-      });
-      setRenderedUrl(url);
-      toast.success("Clip rendered and saved.");
+      const resp = await apiPost<{ url?: string; status?: string }>(
+        "/api/render",
+        { clipId: clip.id }
+      );
+      if (resp.url) {
+        setRenderedUrl(resp.url);
+        toast.success("Clip rendered and saved.");
+        return;
+      }
+      // Worker is rendering on the server — poll for the result.
+      toast.message("Rendering on the server — this can take a minute…");
+      const url = await pollForRender();
+      if (url) {
+        setRenderedUrl(url);
+        toast.success("Clip rendered and saved.");
+      } else {
+        toast.error("Still rendering — check back in a moment.");
+      }
     } catch (err) {
       if (err instanceof ApiError) toast.error(err.message);
       else toast.error("Couldn't render this clip.");
