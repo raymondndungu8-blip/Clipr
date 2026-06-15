@@ -4,9 +4,10 @@ import { guardRoute } from "@/lib/apiGuard";
 import { renderAndUpload, renderSourceAndUpload } from "@/lib/render";
 import { youtubeIdFromUrl } from "@/lib/youtube";
 
-// Rendering runs Node + Chromium (Remotion) — local dev / Node host only, not
-// Vercel serverless. Allow a long render window.
-export const maxDuration = 300;
+// Rendering runs Node + Chromium (Remotion) + yt-dlp — local dev / a Node host
+// (the worker), NOT Vercel serverless. On Vercel this route returns a clean
+// error (CLIPR_RENDER_SCRIPT unset). Keep maxDuration within free-plan limits.
+export const maxDuration = 60;
 
 const RenderSchema = z.object({ clipId: z.uuid() });
 
