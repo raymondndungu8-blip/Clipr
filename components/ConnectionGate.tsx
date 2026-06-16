@@ -19,13 +19,18 @@ export default function ConnectionGate({
 
   useEffect(() => {
     let active = true;
-    apiGet<{ accounts: unknown[] }>("/api/zernio/accounts")
-      .then(({ accounts }) => {
-        if (active) setState((accounts?.length ?? 0) > 0 ? "ok" : "none");
-      })
-      .catch(() => {
-        if (active) setState("none");
-      });
+    (async () => {
+      // Pass if EITHER a Zernio-connected account or a manually-added page exists.
+      const counts = await Promise.all([
+        apiGet<{ accounts: unknown[] }>("/api/zernio/accounts")
+          .then((r) => r.accounts?.length ?? 0)
+          .catch(() => 0),
+        apiGet<{ accounts: unknown[] }>("/api/accounts")
+          .then((r) => r.accounts?.length ?? 0)
+          .catch(() => 0),
+      ]);
+      if (active) setState(counts.some((c) => c > 0) ? "ok" : "none");
+    })();
     return () => {
       active = false;
     };

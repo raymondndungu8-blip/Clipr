@@ -108,10 +108,23 @@ export async function POST(req: NextRequest) {
 
   const { topic, niche, voice, duration, platforms } = parsed.data;
 
-  // Gate: a social account must be connected before generating.
-  try {
-    const accounts = await listAccounts();
-    if (accounts.length === 0) {
+  // Gate: a social account must be connected (a manually-added page OR a
+  // Zernio-connected account) before generating.
+  {
+    let connected = false;
+    const { data: own } = await supabase
+      .from("social_accounts")
+      .select("id")
+      .limit(1);
+    if (own && own.length > 0) connected = true;
+    if (!connected) {
+      try {
+        connected = (await listAccounts()).length > 0;
+      } catch (err) {
+        console.error("[api/faceless] connection check failed:", err);
+      }
+    }
+    if (!connected) {
       return NextResponse.json(
         {
           error: "Connect a social account before generating.",
@@ -120,12 +133,6 @@ export async function POST(req: NextRequest) {
         { status: 403 }
       );
     }
-  } catch (err) {
-    console.error("[api/faceless] connection check failed:", err);
-    return NextResponse.json(
-      { error: "Couldn't verify your connected accounts. Try again." },
-      { status: 502 }
-    );
   }
 
   try {
