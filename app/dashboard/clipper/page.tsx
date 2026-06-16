@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import type { Tables } from "@/types/database";
@@ -62,18 +62,6 @@ export default function ClipperPage() {
     return supabaseRef.current;
   }
 
-  const channelRef = useRef<ReturnType<
-    ReturnType<typeof createClient>["channel"]
-  > | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (channelRef.current && supabaseRef.current) {
-        supabaseRef.current.removeChannel(channelRef.current);
-      }
-    };
-  }, []);
-
   function togglePlatform(p: Platform) {
     setPlatforms((prev) =>
       prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
@@ -102,40 +90,6 @@ export default function ClipperPage() {
     setClips(data ?? []);
   }
 
-  function subscribe(jobId: string) {
-    const supabase = getSupabase();
-    const channel = supabase
-      .channel(`clip_job_${jobId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "clip_jobs",
-          filter: `id=eq.${jobId}`,
-        },
-        (payload) => {
-          const next = payload.new as Tables<"clip_jobs">;
-          setJobStatus(next.status);
-          if (next.status === "done") {
-            loadClips(jobId);
-            setLoading(false);
-            supabase.removeChannel(channel);
-            channelRef.current = null;
-          } else if (next.status === "failed") {
-            toast.error(
-              next.error_message ?? "Clipping failed. Please try again."
-            );
-            setLoading(false);
-            supabase.removeChannel(channel);
-            channelRef.current = null;
-          }
-        }
-      )
-      .subscribe();
-    channelRef.current = channel;
-  }
-
   async function onGenerate() {
     if (!url.trim() && !topic.trim()) {
       toast.error("Add a URL or a topic to clip.");
@@ -161,7 +115,11 @@ export default function ClipperPage() {
         platforms,
         count,
       });
-      subscribe(jobId);
+      // The server returns once the clips are created — load them right away
+      // (no realtime race waiting for a status that already flipped).
+      await loadClips(jobId);
+      setJobStatus("done");
+      setLoading(false);
     } catch (err) {
       setJobStatus(null);
       setLoading(false);

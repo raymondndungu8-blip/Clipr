@@ -108,43 +108,13 @@ Return ONLY the JSON array. No markdown, no commentary.`,
       return NextResponse.json({ error: "Generation failed" }, { status: 500 });
     }
 
-    // 4. Dispatch to worker (video rendering) or finish in text-only mode
-    if (url) {
-      let dispatched = false;
-      const workerUrl = process.env.WORKER_URL;
-      if (workerUrl) {
-        try {
-          // Fire-and-forget render request
-          await fetch(`${workerUrl}/process`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-worker-secret": process.env.WORKER_SECRET ?? "",
-            },
-            body: JSON.stringify({
-              jobId: job.id,
-              sourceUrl: url,
-              topic: topic ?? null,
-              platforms,
-            }),
-          });
-          dispatched = true;
-        } catch (err) {
-          console.error("[api/clip] worker unreachable:", err);
-        }
-      }
-
-      // TEXT-ONLY MODE: AI metadata clips are usable without rendered video.
-      await supabase
-        .from("clip_jobs")
-        .update({ status: dispatched ? "processing" : "done" })
-        .eq("id", job.id);
-    } else {
-      await supabase
-        .from("clip_jobs")
-        .update({ status: "done" })
-        .eq("id", job.id);
-    }
+    // 4. Clips (AI title/hook/captions/timestamps + live preview) are ready
+    //    immediately. Rendering an actual MP4 is on-demand per clip via
+    //    /api/render, so the job itself is done as soon as the clips exist.
+    await supabase
+      .from("clip_jobs")
+      .update({ status: "done" })
+      .eq("id", job.id);
 
     return NextResponse.json({ jobId: job.id });
   } catch (err) {
