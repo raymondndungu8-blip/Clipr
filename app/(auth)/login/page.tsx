@@ -31,6 +31,26 @@ export default function LoginPage() {
     });
   }, [router]);
 
+  async function onForgot() {
+    if (!email) {
+      toast.error("Enter your email first, then tap “Forgot password?”");
+      return;
+    }
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Password reset link sent — check your email.");
+    } catch {
+      toast.error("Couldn't send a reset link. Please try again.");
+    }
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -87,6 +107,13 @@ export default function LoginPage() {
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">Password</Label>
+              <button
+                type="button"
+                onClick={onForgot}
+                className="text-xs font-medium text-clipr-gold hover:underline"
+              >
+                Forgot password?
+              </button>
             </div>
             <IconInput
               id="password"
