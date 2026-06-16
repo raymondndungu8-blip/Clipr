@@ -30,7 +30,17 @@ const PLAYER_CLIENTS = process.env.YT_PLAYER_CLIENTS || "tv,ios,android,web_safa
 const COOKIES_PATH = "/tmp/yt-cookies.txt";
 let cookiesWritten = false;
 function cookieArgs() {
-  const raw = process.env.YT_DLP_COOKIES;
+  // Cookies are large; prefer a single-line base64 secret (YT_DLP_COOKIES_B64),
+  // falling back to a raw value (YT_DLP_COOKIES) with optional \n escapes.
+  let raw = process.env.YT_DLP_COOKIES;
+  const b64 = process.env.YT_DLP_COOKIES_B64;
+  if (!raw && b64) {
+    try {
+      raw = Buffer.from(b64, "base64").toString("utf8");
+    } catch {
+      raw = "";
+    }
+  }
   if (!raw) return [];
   try {
     if (!cookiesWritten) {
