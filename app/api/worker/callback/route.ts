@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createServiceClient } from "@/lib/supabase/server";
+import { safeSecretEqual } from "@/lib/security";
 
 // Machine-to-machine: NOT behind guardRoute. Authenticated by x-worker-secret.
 const ClipCallbackSchema = z.object({
@@ -23,7 +24,7 @@ const CallbackSchema = z.union([ClipCallbackSchema, VideoCallbackSchema]);
 
 export async function POST(req: NextRequest) {
   const secret = req.headers.get("x-worker-secret");
-  if (!secret || secret !== process.env.WORKER_SECRET) {
+  if (!safeSecretEqual(secret, process.env.WORKER_SECRET)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

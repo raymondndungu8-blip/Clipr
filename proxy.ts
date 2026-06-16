@@ -30,9 +30,15 @@ export async function proxy(req: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Never let a transient auth-service error 500 the whole dashboard — fail
+  // safe (treat as signed-out) so the user is sent to /login instead of crashing.
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch (err) {
+    console.error("[proxy] auth check failed:", err);
+  }
 
   if (!user) {
     const url = req.nextUrl.clone();

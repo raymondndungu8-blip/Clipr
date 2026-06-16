@@ -26,11 +26,25 @@ export type GuardResult = GuardSuccess | GuardFailure;
  *   if (guard.error) return guard.error;
  *   const { user, supabase } = guard;
  */
+/** These JSON APIs take small inputs; reject anything larger up front. */
+const MAX_BODY_BYTES = 100_000;
+
 export async function guardRoute(
   req: NextRequest,
   limiterKey: Exclude<LimiterKey, "globalIp">
 ): Promise<GuardResult> {
   const limiters = getLimiters();
+
+  // 0. Reject oversized bodies before doing any work (cheap DoS guard).
+  const contentLength = Number(req.headers.get("content-length") ?? 0);
+  if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
+    return {
+      error: NextResponse.json(
+        { error: "Request body too large." },
+        { status: 413 }
+      ),
+    };
+  }
 
   // 1. Global per-IP limit
   const ip =
