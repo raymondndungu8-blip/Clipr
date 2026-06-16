@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import PlatformPill, { PLATFORMS, type Platform } from "@/components/PlatformPill";
 import ProgressSteps from "@/components/ProgressSteps";
 import ClipCard from "@/components/ClipCard";
+import ClipCardSkeleton from "@/components/ClipCardSkeleton";
 import EmptyState from "@/components/EmptyState";
 import RateLimitBanner from "@/components/RateLimitBanner";
 import {
@@ -335,6 +336,12 @@ export default function ClipperPage() {
                 </StaggerItem>
               ))}
             </Stagger>
+          ) : loading ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: count }).map((_, i) => (
+                <ClipCardSkeleton key={i} label={`Clip ${i + 1} of ${count}`} />
+              ))}
+            </div>
           ) : (
             !showProgress && (
               <EmptyState

@@ -52,14 +52,22 @@ function cookieArgs() {
     return [];
   }
 }
+// A residential proxy is the only reliable way past YouTube's datacenter-IP
+// bot wall (cookies alone don't help once the IP is flagged). Set YT_DLP_PROXY
+// to e.g. http://user:pass@host:port and all yt-dlp calls route through it.
+function proxyArgs() {
+  const proxy = process.env.YT_DLP_PROXY;
+  if (!proxy || proxy.includes("...")) return [];
+  return ["--proxy", proxy];
+}
 function ytCommon() {
   const cookies = cookieArgs();
-  // With cookies, let yt-dlp use its default (web) client — it honors cookies,
-  // which is what actually gets past the datacenter bot wall. Forcing
-  // tv/ios/android clients (a cookieless best-effort bypass) makes yt-dlp
-  // ignore the cookies, so only do that when we have none.
-  if (cookies.length) return cookies;
-  return ["--extractor-args", `youtube:player_client=${PLAYER_CLIENTS}`];
+  const proxy = proxyArgs();
+  // With cookies, let yt-dlp use its default (web) client — it honors cookies.
+  // Forcing tv/ios/android clients (a cookieless best-effort bypass) makes
+  // yt-dlp ignore the cookies, so only do that when we have none.
+  if (cookies.length) return [...proxy, ...cookies];
+  return [...proxy, "--extractor-args", `youtube:player_client=${PLAYER_CLIENTS}`];
 }
 
 // Bundle once per process and reuse across renders (big speedup for a service).
