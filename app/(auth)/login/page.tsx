@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -17,6 +17,20 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  function destination() {
+    if (typeof window === "undefined") return "/dashboard";
+    const target = new URLSearchParams(window.location.search).get("redirect");
+    return target && target.startsWith("/") ? target : "/dashboard";
+  }
+
+  // Already signed in (remembered session)? Go straight in.
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) router.replace(destination());
+    });
+  }, [router]);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -30,7 +44,7 @@ export default function LoginPage() {
         toast.error(error.message);
         return;
       }
-      router.push("/dashboard");
+      router.replace(destination());
     } catch {
       toast.error("Couldn't sign in. Please try again.");
     } finally {

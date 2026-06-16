@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -18,36 +18,42 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Already signed in? Skip straight to the dashboard.
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) router.replace("/dashboard");
+    });
+  }, [router]);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { display_name: displayName } },
+      // Create the account pre-confirmed (server route), then sign in so the
+      // session is stored and we go straight to the dashboard.
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, displayName }),
       });
-      if (error) {
-        toast.error(error.message);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data?.error ?? "Couldn't create your account.");
         return;
       }
-      if (data.session) {
-        router.push("/dashboard");
-        return;
-      }
-      // No session returned (e.g. email confirmation). Try an immediate sign-in —
-      // this succeeds when the account is already confirmed.
+
+      const supabase = createClient();
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (signInError) {
-        toast.success("Check your inbox to confirm your email, then sign in.");
-        router.push("/login");
+        toast.error(signInError.message);
         return;
       }
-      router.push("/dashboard");
+      toast.success("Welcome to Clipr!");
+      router.replace("/dashboard");
     } catch {
       toast.error("Couldn't create your account. Please try again.");
     } finally {
