@@ -25,7 +25,8 @@
       "mcp__a5b62727-7216-4138-91ff-a23c460f69f2__apply_migration",
       "Bash(grep -qiE 'Visit your newly|Error|error:|failed' /c/Users/HomePC/Clipr/.fly-deploy3.log)",
       "Bash(sleep 10)",
-      "Bash(tail -6 /c/Users/HomePC/Clipr/.fly-deploy3.log)"
+      "Bash(tail -6 /c/Users/HomePC/Clipr/.fly-deploy3.log)",
+      "Bash(curl -sI \"https://clipr-lyart.vercel.app/\")"
     ]
   }
 }

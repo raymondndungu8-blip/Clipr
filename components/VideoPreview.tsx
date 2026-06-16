@@ -62,6 +62,10 @@ export default function VideoPreview({
 }: VideoPreviewProps) {
   const safeCaptions = captions?.filter(Boolean) ?? [];
   const [index, setIndex] = useState(0);
+  // Defer the (heavy) YouTube iframe until the user taps play. Rendering many
+  // autoplaying embeds at once freezes phones/laptops — a thumbnail facade keeps
+  // the page light and fast no matter how many clips are shown.
+  const [playing, setPlaying] = useState(false);
 
   const controlled = typeof activeIndex === "number";
 
@@ -178,16 +182,54 @@ export default function VideoPreview({
               {overlay}
             </>
           ) : isEmbed ? (
-            <>
-              <iframe
-                src={embedSrc!}
-                title="Clip preview"
-                allow="autoplay; encrypted-media; picture-in-picture"
-                allowFullScreen
-                className="absolute inset-0 h-full w-full border-0 bg-black"
-              />
-              {overlay}
-            </>
+            playing ? (
+              <>
+                <iframe
+                  src={embedSrc!}
+                  title="Clip preview"
+                  allow="autoplay; encrypted-media; picture-in-picture"
+                  allowFullScreen
+                  className="absolute inset-0 h-full w-full border-0 bg-black"
+                />
+                {overlay}
+              </>
+            ) : (
+              <>
+                {/* Lightweight thumbnail facade — taps load the real player. */}
+                <button
+                  type="button"
+                  onClick={() => setPlaying(true)}
+                  aria-label="Play clip preview"
+                  className="absolute inset-0 h-full w-full"
+                >
+                  <img
+                    src={`https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="absolute inset-0 h-full w-full bg-black object-cover"
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center">
+                    <span
+                      className="flex items-center justify-center rounded-full transition-transform active:scale-90"
+                      style={{
+                        width: 44,
+                        height: 44,
+                        backgroundColor: "var(--clipr-gold)",
+                        boxShadow: "0 0 24px 4px rgba(61,123,255,0.5)",
+                      }}
+                    >
+                      <Play
+                        fill="#FFFFFF"
+                        stroke="#FFFFFF"
+                        style={{ width: 18, height: 18, marginLeft: 2 }}
+                      />
+                    </span>
+                  </span>
+                </button>
+                {overlay}
+              </>
+            )
           ) : (
             <>
               <div

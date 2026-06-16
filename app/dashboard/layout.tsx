@@ -129,7 +129,7 @@ export default function DashboardLayout({
 
       {/* mobile bottom tab bar */}
       <nav className="fixed inset-x-0 bottom-0 z-40 rounded-t-2xl border-t border-clipr-border bg-clipr-surface/95 backdrop-blur-md shadow-[0_-6px_20px_rgba(0,0,0,0.4)] md:hidden">
-        <div className="flex items-stretch justify-around px-2 py-2">
+        <div className="flex items-stretch justify-around px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           {tabs.map((t) => {
             const active = isActive(t.href);
             return (
