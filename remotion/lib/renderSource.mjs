@@ -53,7 +53,13 @@ function cookieArgs() {
   }
 }
 function ytCommon() {
-  return ["--extractor-args", `youtube:player_client=${PLAYER_CLIENTS}`, ...cookieArgs()];
+  const cookies = cookieArgs();
+  // With cookies, let yt-dlp use its default (web) client — it honors cookies,
+  // which is what actually gets past the datacenter bot wall. Forcing
+  // tv/ios/android clients (a cookieless best-effort bypass) makes yt-dlp
+  // ignore the cookies, so only do that when we have none.
+  if (cookies.length) return cookies;
+  return ["--extractor-args", `youtube:player_client=${PLAYER_CLIENTS}`];
 }
 
 // Bundle once per process and reuse across renders (big speedup for a service).
