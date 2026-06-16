@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardRoute } from "@/lib/apiGuard";
 import { generateJSON } from "@/lib/anthropic";
+import { listAccounts } from "@/lib/zernio";
 import { ClipInputSchema } from "@/lib/validations/clip";
 
 interface ClipMeta {
@@ -35,6 +36,26 @@ export async function POST(req: NextRequest) {
 
   const { url, topic, style, platforms } = parsed.data;
   const count = parsed.data.count ?? 3;
+
+  // Gate: a social account must be connected before clipping.
+  try {
+    const accounts = await listAccounts();
+    if (accounts.length === 0) {
+      return NextResponse.json(
+        {
+          error: "Connect a social account before clipping.",
+          code: "NO_CONNECTION",
+        },
+        { status: 403 }
+      );
+    }
+  } catch (err) {
+    console.error("[api/clip] connection check failed:", err);
+    return NextResponse.json(
+      { error: "Couldn't verify your connected accounts. Try again." },
+      { status: 502 }
+    );
+  }
 
   try {
     // 1. Create the job (RLS applies — request-scoped client)

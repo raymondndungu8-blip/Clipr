@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardRoute } from "@/lib/apiGuard";
 import { generateJSON } from "@/lib/anthropic";
+import { listAccounts } from "@/lib/zernio";
 import { uploadToR2 } from "@/lib/r2";
 import { FacelessInputSchema } from "@/lib/validations/faceless";
 import type { Json } from "@/types/database";
@@ -106,6 +107,26 @@ export async function POST(req: NextRequest) {
   }
 
   const { topic, niche, voice, duration, platforms } = parsed.data;
+
+  // Gate: a social account must be connected before generating.
+  try {
+    const accounts = await listAccounts();
+    if (accounts.length === 0) {
+      return NextResponse.json(
+        {
+          error: "Connect a social account before generating.",
+          code: "NO_CONNECTION",
+        },
+        { status: 403 }
+      );
+    }
+  } catch (err) {
+    console.error("[api/faceless] connection check failed:", err);
+    return NextResponse.json(
+      { error: "Couldn't verify your connected accounts. Try again." },
+      { status: 502 }
+    );
+  }
 
   try {
     // 1. Script from Claude

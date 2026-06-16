@@ -12,6 +12,7 @@ import PlatformPill, { PLATFORMS, type Platform } from "@/components/PlatformPil
 import ProgressSteps from "@/components/ProgressSteps";
 import ClipCard from "@/components/ClipCard";
 import ClipCardSkeleton from "@/components/ClipCardSkeleton";
+import ConnectionGate from "@/components/ConnectionGate";
 import EmptyState from "@/components/EmptyState";
 import RateLimitBanner from "@/components/RateLimitBanner";
 import {
@@ -149,6 +150,7 @@ export default function ClipperPage() {
         </p>
       </div>
 
+      <ConnectionGate>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
         {/* controls */}
         <FadeIn className="flex h-fit flex-col gap-5 rounded-2xl bg-clipr-card neo-raised p-5">
@@ -310,6 +312,7 @@ export default function ClipperPage() {
           )}
         </div>
       </div>
+      </ConnectionGate>
     </PageTransition>
   );
 }
