@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import type { Tables } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import VideoPreview, { youtubeIdFromUrl } from "@/components/VideoPreview";
+import VideoPreview from "@/components/VideoPreview";
 import PostDialog from "@/components/PostDialog";
 import { apiPost, ApiError } from "@/components/lib/api";
 
@@ -14,15 +14,14 @@ type Clip = Tables<"clips">;
 
 export default function ClipCard({
   clip,
-  sourceUrl,
 }: {
   clip: Clip;
+  /** Kept for call-site compatibility; previews no longer embed YouTube. */
   sourceUrl?: string | null;
 }) {
   const [postOpen, setPostOpen] = useState(false);
   const [renderedUrl, setRenderedUrl] = useState<string | null>(clip.r2_url);
   const [rendering, setRendering] = useState(false);
-  const youtubeId = youtubeIdFromUrl(sourceUrl);
 
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
   function getSupabase() {
@@ -119,9 +118,6 @@ export default function ClipCard({
           duration={clip.duration ?? undefined}
           bgGradient={clip.bg_gradient ?? undefined}
           videoUrl={renderedUrl}
-          youtubeId={youtubeId}
-          startSeconds={clip.start_seconds}
-          endSeconds={clip.end_seconds}
         />
       </div>
 

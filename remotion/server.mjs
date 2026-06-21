@@ -3,6 +3,7 @@
 // the clip row. Authenticated with x-worker-secret.
 import express from "express";
 import { renderSourceClip, renderCaptionsClip } from "./lib/renderSource.mjs";
+import { fetchTranscript, ytIdFromUrl } from "./lib/transcript.mjs";
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
@@ -18,6 +19,16 @@ app.use((req, res, next) => {
     return res.status(403).json({ error: "Forbidden" });
   }
   next();
+});
+
+// Returns the real video transcript (timed segments) so the app can generate
+// captions/titles that actually match the video. Not IP-blocked like downloads.
+app.post("/transcript", (req, res) => {
+  const { url, videoId } = req.body || {};
+  const id = ytIdFromUrl(videoId || url);
+  if (!id) return res.status(400).json({ error: "url or videoId required" });
+  const out = fetchTranscript(id);
+  return res.json(out);
 });
 
 app.post("/render", (req, res) => {

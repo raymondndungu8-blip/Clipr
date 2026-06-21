@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { guardRoute } from "@/lib/apiGuard";
 import { generateJSON } from "@/lib/anthropic";
 import { listAccounts } from "@/lib/zernio";
+import { youtubeIdFromUrl } from "@/lib/youtube";
 import { ClipInputSchema } from "@/lib/validations/clip";
 
 interface ClipMeta {
@@ -14,6 +15,49 @@ interface ClipMeta {
   startSeconds: number;
   endSeconds: number;
   bgGradient: string;
+}
+
+type TranscriptSegment = { start: number; dur: number; text: string };
+
+/** Fetch the real video transcript from the worker (not IP-blocked). */
+async function fetchTranscript(
+  videoId: string
+): Promise<TranscriptSegment[] | null> {
+  const workerUrl = process.env.WORKER_URL;
+  if (!workerUrl || workerUrl.includes("your-worker")) return null;
+  try {
+    const res = await fetch(`${workerUrl}/transcript`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-worker-secret": process.env.WORKER_SECRET ?? "",
+      },
+      body: JSON.stringify({ videoId }),
+    });
+    const data = (await res.json()) as {
+      ok?: boolean;
+      segments?: TranscriptSegment[];
+    };
+    if (data?.ok && Array.isArray(data.segments) && data.segments.length > 0) {
+      return data.segments;
+    }
+  } catch (err) {
+    console.error("[api/clip] transcript fetch failed:", err);
+  }
+  return null;
+}
+
+/** Condense a transcript into "[s] text" lines within a character budget. */
+function condenseTranscript(segments: TranscriptSegment[], maxChars = 24000) {
+  const lines: string[] = [];
+  let total = 0;
+  for (const s of segments) {
+    const line = `[${Math.floor(s.start)}] ${s.text}`;
+    if (total + line.length > maxChars) break;
+    lines.push(line);
+    total += line.length + 1;
+  }
+  return lines.join("\n");
 }
 
 export async function POST(req: NextRequest) {
@@ -84,26 +128,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Generation failed" }, { status: 500 });
     }
 
-    // 2. AI clip metadata
+    // 2. AI clip metadata — grounded in the REAL transcript when we can read it,
+    //    so titles/captions/timestamps actually match the video (no guessing).
+    const youtubeId = youtubeIdFromUrl(url);
+    const transcript = youtubeId ? await fetchTranscript(youtubeId) : null;
+
     const source = url
       ? `the video at ${url}${topic ? ` (about: ${topic})` : ""}`
       : `the topic "${topic}"`;
 
+    const transcriptBlock = transcript
+      ? `\n\nHere is the ACTUAL transcript of the video (each line is "[startSecond] spoken text"):\n"""\n${condenseTranscript(transcript)}\n"""\n\nUse ONLY this transcript. Pick the ${count} most viral/compelling moments that ACTUALLY occur in it. For each clip, set startSeconds/endSeconds to the real timestamps from the transcript (a tight 20-60s window around the moment), and write the title, hook, description and captions from what is ACTUALLY said in that window. Captions must be real phrases spoken in the clip. Do not invent topics that aren't in the transcript.`
+      : "";
+
     const clipsJson = await generateJSON<ClipMeta[]>({
       system:
-        "You are a viral short-form video producer. Return valid JSON only.",
+        "You are a viral short-form video producer. You turn real video transcripts into accurate short clips. Return valid JSON only.",
       prompt: `Create exactly ${count} viral short-form clip concept${count === 1 ? "" : "s"} for ${source}.
-Style: ${style}. Target platforms: ${platforms.join(", ")}.
+Style: ${style}. Target platforms: ${platforms.join(", ")}.${transcriptBlock}
 
 Return a JSON array of exactly ${count} objects, each with:
-- "title": punchy clip title (under 60 chars)
-- "hook": scroll-stopping first line spoken on screen
+- "title": punchy clip title (under 60 chars) based on the clip's actual content
+- "hook": scroll-stopping first line, drawn from what's actually said
 - "description": 1 short post description tailored to the platforms
-- "captions": array of exactly 5 short caption chunks, each 2-4 words, ALL UPPERCASE
+- "captions": array of exactly 5 short caption chunks, each 2-4 words, ALL UPPERCASE${transcript ? ", taken from words actually spoken in the clip" : ""}
 - "hashtags": array of exactly 5 relevant hashtags (with #)
 - "duration": clip length as "0:NN" (e.g. "0:34"), between 15 and 60 seconds
 - "startSeconds": integer start time (in seconds) of this moment within the source video
-- "endSeconds": integer end time (in seconds); endSeconds - startSeconds must equal the duration. Pick ${count} different, non-overlapping moments spread across a typical 8-15 minute video.
+- "endSeconds": integer end time (in seconds); endSeconds - startSeconds must equal the duration.${transcript ? " Use the real transcript timestamps." : " Pick different, non-overlapping moments spread across a typical 8-15 minute video."}
 - "bgGradient": a dark CSS linear-gradient string suited to the mood (e.g. "linear-gradient(135deg, #0f0c29, #302b63)")
 
 Return ONLY the JSON array. No markdown, no commentary.`,
