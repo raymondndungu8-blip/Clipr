@@ -28,7 +28,10 @@
       "Bash(tail -6 /c/Users/HomePC/Clipr/.fly-deploy3.log)",
       "Bash(curl -sI \"https://clipr-lyart.vercel.app/\")",
       "Bash(curl -s --max-time 40 \"https://clipr-rn-render.fly.dev/health\")",
-      "Bash(curl -s --max-time 45 \"https://clipr-rn-render.fly.dev/health\")"
+      "Bash(curl -s --max-time 45 \"https://clipr-rn-render.fly.dev/health\")",
+      "Bash(curl -s --max-time 60 -X POST \"https://clipr-rn-render.fly.dev/transcript\" -H \"x-worker-secret: 7a3e1f74d6b6a10b904bdfd4acd532e8\" -H \"Content-Type: application/json\" -d '{\"videoId\":\"dQw4w9WgXcQ\"}')",
+      "Bash(curl -s --max-time 70 -X POST \"https://clipr-rn-render.fly.dev/transcript\" -H \"x-worker-secret: 7a3e1f74d6b6a10b904bdfd4acd532e8\" -H \"Content-Type: application/json\" -d '{\"videoId\":\"dQw4w9WgXcQ\"}')",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\).on\\('end',\\(\\)=>{try{const j=JSON.parse\\(d\\);console.log\\('ok:',j.ok,'segments:',j.segments?.length\\);if\\(j.segments\\)console.log\\('sample:',j.segments.slice\\(0,4\\).map\\(s=>s.start+'s '+s.text\\).join\\(' | '\\)\\);if\\(j.error\\)console.log\\('err:',j.error\\)}catch\\(e\\){console.log\\('raw:',d.slice\\(0,300\\)\\)}}\\)\")"
     ]
   }
 }
