@@ -224,9 +224,50 @@ async function cleanup(sourceId) {
   }
 }
 
+const DEFAULT_GRADIENT =
+  "linear-gradient(160deg, #14213d 0%, #0a0e1a 55%, #0e1b33 100%)";
+
 /**
- * Render a real-footage clip and upload it. Returns the public MP4 URL.
- * @param {{url:string,start:number,end:number,id:string,key:string,hook?:string,accent?:string}} opts
+ * Render a captions-only clip (hook + AI captions over a gradient) and upload
+ * it. No YouTube/yt-dlp needed, so this always works — used directly for
+ * topic-only clips and as the fallback when a source download is blocked.
+ * @param {{id:string,key?:string,hook?:string,captions?:string[],gradient?:string,accent?:string}} opts
+ */
+export async function renderCaptionsClip(opts) {
+  const { id } = opts;
+  const key = opts.key || `clips/${id}.mp4`;
+  const inputProps = {
+    hook: opts.hook ?? "",
+    captions: (opts.captions ?? []).map((c) => String(c)).filter(Boolean),
+    gradient: opts.gradient || DEFAULT_GRADIENT,
+    accent: opts.accent ?? "#3d7bff",
+  };
+
+  const serveUrl = await getServeUrl();
+  const composition = await selectComposition({
+    serveUrl,
+    id: "CaptionClip",
+    inputProps,
+  });
+  const outPath = path.join(ROOT, "out", `${id}.mp4`);
+  await mkdir(path.dirname(outPath), { recursive: true });
+  await renderMedia({
+    composition,
+    serveUrl,
+    codec: "h264",
+    outputLocation: outPath,
+    inputProps,
+  });
+  const publicUrl = await uploadVideo(outPath, key);
+  await rm(outPath, { force: true }).catch(() => {});
+  return publicUrl;
+}
+
+/**
+ * Render a real-footage clip and upload it. Returns the public MP4 URL. If the
+ * source download is blocked (YouTube bot wall, no proxy), falls back to a
+ * captions-only clip so there's always a downloadable, captioned output.
+ * @param {{url:string,start:number,end:number,id:string,key:string,hook?:string,captions?:string[],gradient?:string,accent?:string}} opts
  */
 export async function renderSourceClip(opts) {
   const { url, start, end, id } = opts;
@@ -236,7 +277,16 @@ export async function renderSourceClip(opts) {
   const accent = opts.accent ?? "#3d7bff";
 
   try {
-    const { videoRel, vttPath, segmented } = await download(url, start, end, id);
+    let downloaded;
+    try {
+      downloaded = await download(url, start, end, id);
+    } catch (err) {
+      console.error(
+        `[render] source download failed (${err?.message || err}) — falling back to captions clip`
+      );
+      return await renderCaptionsClip(opts);
+    }
+    const { videoRel, vttPath, segmented } = downloaded;
     let captions = [];
     if (vttPath && existsSync(vttPath)) {
       captions = buildCaptions(parseVtt(await readFile(vttPath, "utf8")), start, end, clipLen);

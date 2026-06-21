@@ -48,18 +48,25 @@ export async function POST(req: NextRequest) {
     typeof clip.end_seconds === "number" &&
     clip.end_seconds > clip.start_seconds;
 
-  // Production: dispatch to the deployed render worker (Fly). It renders + uploads
-  // and writes clip.r2_url when done; the client polls for it.
+  // Production: dispatch to the deployed render worker (Fly). It renders +
+  // uploads and writes clip.r2_url when done; the client polls for it. Real
+  // footage is used when there's a YouTube segment; otherwise (or if the
+  // download is blocked) the worker renders the AI captions over a gradient, so
+  // there's always a captioned, downloadable MP4.
   const workerUrl = process.env.WORKER_URL;
   if (workerUrl && !workerUrl.includes("your-worker")) {
-    if (!(youtubeId && hasSegment && job?.source_url)) {
-      return NextResponse.json(
-        {
-          error:
-            "Real rendering needs a YouTube source URL. Topic-only clips show the styled preview.",
-        },
-        { status: 422 }
-      );
+    const body: Record<string, unknown> = {
+      clipId: clip.id,
+      hook: clip.hook ?? "",
+      captions: clip.captions ?? [],
+      gradient: clip.bg_gradient ?? undefined,
+      accent: "#3d7bff",
+      key: `clips/${clip.id}.mp4`,
+    };
+    if (youtubeId && hasSegment && job?.source_url) {
+      body.url = job.source_url;
+      body.start = clip.start_seconds;
+      body.end = clip.end_seconds;
     }
     try {
       const res = await fetch(`${workerUrl}/render`, {
@@ -68,14 +75,7 @@ export async function POST(req: NextRequest) {
           "Content-Type": "application/json",
           "x-worker-secret": process.env.WORKER_SECRET ?? "",
         },
-        body: JSON.stringify({
-          clipId: clip.id,
-          url: job.source_url,
-          start: clip.start_seconds,
-          end: clip.end_seconds,
-          hook: clip.hook ?? "",
-          key: `clips/${clip.id}.mp4`,
-        }),
+        body: JSON.stringify(body),
       });
       if (!res.ok && res.status !== 202) {
         throw new Error(`worker responded ${res.status}`);

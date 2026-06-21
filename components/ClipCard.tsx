@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Copy, Send, Clapperboard } from "lucide-react";
+import { Copy, Send, Clapperboard, Download } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
@@ -71,6 +71,25 @@ export default function ClipCard({
       else toast.error("Couldn't render this clip.");
     } finally {
       setRendering(false);
+    }
+  }
+
+  async function downloadVideo() {
+    if (!renderedUrl) return;
+    try {
+      const res = await fetch(renderedUrl);
+      const blob = await res.blob();
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = `clipr-${clip.id}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+    } catch {
+      // Fallback: open the file in a new tab if the blob fetch is blocked.
+      window.open(renderedUrl, "_blank", "noopener,noreferrer");
     }
   }
 
@@ -150,6 +169,12 @@ export default function ClipCard({
               ? "Re-render video"
               : "Render video"}
         </Button>
+        {renderedUrl && (
+          <Button variant="outline" size="sm" onClick={downloadVideo}>
+            <Download className="size-3.5" />
+            Download
+          </Button>
+        )}
         <div className="flex gap-2">
           <Button
             variant="outline"
