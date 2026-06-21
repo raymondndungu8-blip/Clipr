@@ -9,7 +9,17 @@ import { youtubeIdFromUrl } from "@/lib/youtube";
 // error (CLIPR_RENDER_SCRIPT unset). Keep maxDuration within free-plan limits.
 export const maxDuration = 60;
 
-const RenderSchema = z.object({ clipId: z.uuid() });
+const RenderSchema = z
+  .object({
+    clipId: z.uuid().optional(),
+    videoId: z.uuid().optional(),
+  })
+  .refine((d) => d.clipId || d.videoId, {
+    message: "clipId or videoId is required",
+  });
+
+const DEFAULT_GRADIENT =
+  "linear-gradient(160deg, #14213d 0%, #0a0e1a 55%, #0e1b33 100%)";
 
 export async function POST(req: NextRequest) {
   const guard = await guardRoute(req, "clipGenerate");
@@ -25,11 +35,83 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Faceless video: render the AI captions + hook over a gradient (no source).
+  if (parsed.data.videoId) {
+    const { data: video } = await supabase
+      .from("faceless_videos")
+      .select("*")
+      .eq("id", parsed.data.videoId)
+      .single();
+    if (!video) {
+      return NextResponse.json({ error: "Video not found" }, { status: 404 });
+    }
+
+    const script = (video.script_json ?? {}) as {
+      hook?: string;
+      captions?: unknown;
+      bgGradient?: string;
+    };
+    const captions = Array.isArray(script.captions) ? script.captions : [];
+    const hook = script.hook ?? "";
+    const gradient = script.bgGradient ?? DEFAULT_GRADIENT;
+    const key = `videos/${video.id}.mp4`;
+
+    const workerUrl = process.env.WORKER_URL;
+    if (workerUrl && !workerUrl.includes("your-worker")) {
+      try {
+        const res = await fetch(`${workerUrl}/render`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-worker-secret": process.env.WORKER_SECRET ?? "",
+          },
+          body: JSON.stringify({
+            clipId: video.id,
+            table: "faceless_videos",
+            hook,
+            captions,
+            gradient,
+            accent: "#3d7bff",
+            key,
+          }),
+        });
+        if (!res.ok && res.status !== 202) {
+          throw new Error(`worker responded ${res.status}`);
+        }
+        return NextResponse.json({ status: "rendering" });
+      } catch (err) {
+        console.error("[api/render] faceless dispatch failed:", err);
+        return NextResponse.json(
+          { error: "Couldn't reach the render service. Try again." },
+          { status: 502 }
+        );
+      }
+    }
+
+    // Local dev fallback: render in-process.
+    try {
+      const url = await renderAndUpload({
+        compositionId: "CaptionClip",
+        props: { hook, captions, gradient, accent: "#3d7bff" },
+        key,
+      });
+      await supabase
+        .from("faceless_videos")
+        .update({ r2_url: url })
+        .eq("id", video.id);
+      return NextResponse.json({ url });
+    } catch (err) {
+      console.error("[api/render] faceless render failed:", err);
+      return NextResponse.json({ error: "Render failed" }, { status: 500 });
+    }
+  }
+
   // RLS ensures the user can only render their own clip.
+  const clipId = parsed.data.clipId!;
   const { data: clip } = await supabase
     .from("clips")
     .select("*")
-    .eq("id", parsed.data.clipId)
+    .eq("id", clipId)
     .single();
   if (!clip) {
     return NextResponse.json({ error: "Clip not found" }, { status: 404 });

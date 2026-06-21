@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Copy, Send } from "lucide-react";
+import { useRef, useState } from "react";
+import { Copy, Send, Clapperboard, Download } from "lucide-react";
 import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -84,6 +85,75 @@ export default function FacelessPage() {
   const [videoId, setVideoId] = useState<string | null>(null);
   const [script, setScript] = useState<FacelessScript | null>(null);
   const [postOpen, setPostOpen] = useState(false);
+  const [renderedUrl, setRenderedUrl] = useState<string | null>(null);
+  const [rendering, setRendering] = useState(false);
+
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
+  function getSupabase() {
+    if (!supabaseRef.current) supabaseRef.current = createClient();
+    return supabaseRef.current;
+  }
+
+  async function pollForRender(id: string): Promise<string | null> {
+    const deadline = Date.now() + 5 * 60 * 1000;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const { data } = await getSupabase()
+        .from("faceless_videos")
+        .select("r2_url")
+        .eq("id", id)
+        .single();
+      if (data?.r2_url) return data.r2_url;
+    }
+    return null;
+  }
+
+  async function renderVideo() {
+    if (!videoId) return;
+    setRendering(true);
+    try {
+      const resp = await apiPost<{ url?: string; status?: string }>(
+        "/api/render",
+        { videoId }
+      );
+      if (resp.url) {
+        setRenderedUrl(resp.url);
+        toast.success("Video rendered and saved.");
+        return;
+      }
+      toast.message("Rendering on the server — this can take a minute…");
+      const url = await pollForRender(videoId);
+      if (url) {
+        setRenderedUrl(url);
+        toast.success("Video rendered and saved.");
+      } else {
+        toast.error("Still rendering — check back in a moment.");
+      }
+    } catch (err) {
+      if (err instanceof ApiError) toast.error(err.message);
+      else toast.error("Couldn't render this video.");
+    } finally {
+      setRendering(false);
+    }
+  }
+
+  async function downloadVideo() {
+    if (!renderedUrl) return;
+    try {
+      const res = await fetch(renderedUrl);
+      const blob = await res.blob();
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = `clipr-faceless-${videoId}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+    } catch {
+      window.open(renderedUrl, "_blank", "noopener,noreferrer");
+    }
+  }
 
   function togglePlatform(p: Platform) {
     setPlatforms((prev) =>
@@ -103,6 +173,7 @@ export default function FacelessPage() {
 
     setLoading(true);
     setRateLimit(null);
+    setRenderedUrl(null);
     try {
       const res = await apiPost<{ videoId: string; script: FacelessScript }>(
         "/api/faceless",
@@ -271,6 +342,7 @@ export default function FacelessPage() {
                     captions={script.captions}
                     duration={duration}
                     bgGradient={script.bgGradient}
+                    videoUrl={renderedUrl}
                   />
                 </ScaleIn>
                 <div className="flex flex-col gap-3">
@@ -293,6 +365,29 @@ export default function FacelessPage() {
                     </div>
                   )}
                   <div className="mt-auto flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={renderVideo}
+                      disabled={rendering}
+                    >
+                      {rendering ? (
+                        <span className="clipr-spinner" />
+                      ) : (
+                        <Clapperboard className="size-3.5" />
+                      )}
+                      {rendering
+                        ? "Rendering…"
+                        : renderedUrl
+                          ? "Re-render"
+                          : "Render video"}
+                    </Button>
+                    {renderedUrl && (
+                      <Button variant="outline" size="sm" onClick={downloadVideo}>
+                        <Download className="size-3.5" />
+                        Download
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"

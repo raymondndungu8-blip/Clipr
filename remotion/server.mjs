@@ -21,8 +21,18 @@ app.use((req, res, next) => {
 });
 
 app.post("/render", (req, res) => {
-  const { clipId, url, start, end, hook, key, captions, gradient, accent } =
-    req.body || {};
+  const {
+    clipId,
+    url,
+    start,
+    end,
+    hook,
+    key,
+    captions,
+    gradient,
+    accent,
+    table,
+  } = req.body || {};
   // Respond immediately; render in the background.
   res.status(202).json({ accepted: true, clipId: clipId ?? null });
 
@@ -32,7 +42,7 @@ app.post("/render", (req, res) => {
     const common = { id, key: outKey, hook: hook || "", captions, gradient, accent };
     try {
       // Real footage when we have a source segment (falls back to captions if
-      // the download is blocked); captions-only for topic clips.
+      // the download is blocked); captions-only for topic / faceless clips.
       const publicUrl =
         url && start != null && end != null
           ? await renderSourceClip({
@@ -42,7 +52,7 @@ app.post("/render", (req, res) => {
               end: Number(end),
             })
           : await renderCaptionsClip(common);
-      if (clipId && publicUrl) await updateClip(clipId, publicUrl);
+      if (clipId && publicUrl) await updateClip(clipId, publicUrl, table);
       console.log(`[render] ${clipId ?? "(adhoc)"} -> ${publicUrl}`);
     } catch (err) {
       console.error(`[render] failed for ${clipId}:`, err?.message || err);
@@ -50,11 +60,13 @@ app.post("/render", (req, res) => {
   })();
 });
 
-async function updateClip(clipId, r2Url) {
+async function updateClip(rowId, r2Url, table) {
   const base = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!base || !key) return;
-  const res = await fetch(`${base}/rest/v1/clips?id=eq.${clipId}`, {
+  // Allowlist the table to avoid any injection via the request body.
+  const target = table === "faceless_videos" ? "faceless_videos" : "clips";
+  const res = await fetch(`${base}/rest/v1/${target}?id=eq.${rowId}`, {
     method: "PATCH",
     headers: {
       apikey: key,
@@ -65,7 +77,7 @@ async function updateClip(clipId, r2Url) {
     body: JSON.stringify({ r2_url: r2Url }),
   });
   if (!res.ok) {
-    console.error(`[render] could not update clip ${clipId}: ${res.status}`);
+    console.error(`[render] could not update ${target} ${rowId}: ${res.status}`);
   }
 }
 

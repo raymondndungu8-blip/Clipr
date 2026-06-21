@@ -26,7 +26,9 @@
       "Bash(grep -qiE 'Visit your newly|Error|error:|failed' /c/Users/HomePC/Clipr/.fly-deploy3.log)",
       "Bash(sleep 10)",
       "Bash(tail -6 /c/Users/HomePC/Clipr/.fly-deploy3.log)",
-      "Bash(curl -sI \"https://clipr-lyart.vercel.app/\")"
+      "Bash(curl -sI \"https://clipr-lyart.vercel.app/\")",
+      "Bash(curl -s --max-time 40 \"https://clipr-rn-render.fly.dev/health\")",
+      "Bash(curl -s --max-time 45 \"https://clipr-rn-render.fly.dev/health\")"
     ]
   }
 }
