@@ -38,9 +38,11 @@ export const ClipInputSchema = z
       .max(4),
     /** How many shorts/reels to clip (default 3, up to 20). */
     count: z.coerce.number().int().min(1).max(20).optional(),
+    /** Storage path of an uploaded video (Supabase "uploads" bucket). */
+    uploadKey: z.string().min(1).max(300).optional(),
   })
-  .refine((data) => Boolean(data.url || data.topic), {
-    message: "Provide a video URL or a topic.",
+  .refine((data) => Boolean(data.url || data.topic || data.uploadKey), {
+    message: "Provide a video URL, a topic, or an uploaded video.",
     path: ["url"],
   });
 

@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { url, topic, style, platforms } = parsed.data;
+  const { url, topic, style, platforms, uploadKey } = parsed.data;
   const count = parsed.data.count ?? 3;
 
   // Gate: a social account must be connected (a manually-added page OR a
@@ -104,6 +104,69 @@ export async function POST(req: NextRequest) {
           code: "NO_CONNECTION",
         },
         { status: 403 }
+      );
+    }
+  }
+
+  // Uploaded video: the worker does everything (download → Whisper transcript →
+  // AI clip selection → render from the file). Async; the client polls the job.
+  if (uploadKey) {
+    const { data: job, error: jobError } = await supabase
+      .from("clip_jobs")
+      .insert({
+        user_id: user.id,
+        source_url: null,
+        topic: topic ?? null,
+        style,
+        platforms,
+        status: "processing",
+      })
+      .select("id")
+      .single();
+    if (jobError || !job) {
+      console.error("[api/clip] upload job insert failed:", jobError);
+      return NextResponse.json({ error: "Generation failed" }, { status: 500 });
+    }
+
+    const workerUrl = process.env.WORKER_URL;
+    if (!workerUrl || workerUrl.includes("your-worker")) {
+      await supabase
+        .from("clip_jobs")
+        .update({ status: "failed", error_message: "Processor unavailable." })
+        .eq("id", job.id);
+      return NextResponse.json(
+        { error: "Video processing isn't available right now." },
+        { status: 503 }
+      );
+    }
+    try {
+      const res = await fetch(`${workerUrl}/process-upload`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-worker-secret": process.env.WORKER_SECRET ?? "",
+        },
+        body: JSON.stringify({
+          jobId: job.id,
+          key: uploadKey,
+          count,
+          style,
+          platforms,
+        }),
+      });
+      if (!res.ok && res.status !== 202) {
+        throw new Error(`worker responded ${res.status}`);
+      }
+      return NextResponse.json({ jobId: job.id, status: "processing" });
+    } catch (err) {
+      console.error("[api/clip] upload dispatch failed:", err);
+      await supabase
+        .from("clip_jobs")
+        .update({ status: "failed", error_message: "Couldn't reach processor." })
+        .eq("id", job.id);
+      return NextResponse.json(
+        { error: "Couldn't start processing. Try again." },
+        { status: 502 }
       );
     }
   }

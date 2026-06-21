@@ -2,8 +2,95 @@
 // + captions and uploads to Supabase Storage, then writes the public URL back to
 // the clip row. Authenticated with x-worker-secret.
 import express from "express";
-import { renderSourceClip, renderCaptionsClip } from "./lib/renderSource.mjs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { mkdir, writeFile, rm } from "node:fs/promises";
+import {
+  renderSourceClip,
+  renderCaptionsClip,
+  renderUploadedClip,
+} from "./lib/renderSource.mjs";
 import { fetchTranscript, ytIdFromUrl } from "./lib/transcript.mjs";
+import { transcribeFile } from "./lib/whisper.mjs";
+import { generateClipsFromTranscript } from "./lib/genClips.mjs";
+
+const ROOT = path.dirname(fileURLToPath(import.meta.url));
+const SOURCES_DIR = path.join(ROOT, "public", "sources");
+const SUPA = process.env.SUPABASE_URL;
+const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const UPLOAD_BUCKET = process.env.UPLOAD_BUCKET || "uploads";
+
+async function downloadUpload(key, destPath) {
+  const res = await fetch(`${SUPA}/storage/v1/object/${UPLOAD_BUCKET}/${key}`, {
+    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` },
+  });
+  if (!res.ok) throw new Error(`download upload failed ${res.status}`);
+  await writeFile(destPath, Buffer.from(await res.arrayBuffer()));
+}
+
+async function signUploadUrl(key) {
+  const res = await fetch(
+    `${SUPA}/storage/v1/object/sign/${UPLOAD_BUCKET}/${key}`,
+    {
+      method: "POST",
+      headers: {
+        apikey: SUPA_KEY,
+        Authorization: `Bearer ${SUPA_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ expiresIn: 3600 }),
+    }
+  );
+  if (!res.ok) throw new Error(`sign url failed ${res.status}`);
+  const data = await res.json();
+  return `${SUPA}/storage/v1${data.signedURL}`;
+}
+
+async function insertClips(jobId, metas) {
+  const rows = metas.map((c) => ({
+    job_id: jobId,
+    title: c.title,
+    hook: c.hook,
+    description: c.description,
+    captions: c.captions,
+    hashtags: c.hashtags,
+    duration: c.duration,
+    start_seconds: Number.isFinite(Number(c.startSeconds))
+      ? Math.floor(Number(c.startSeconds))
+      : null,
+    end_seconds: Number.isFinite(Number(c.endSeconds))
+      ? Math.floor(Number(c.endSeconds))
+      : null,
+    bg_gradient: c.bgGradient,
+  }));
+  const res = await fetch(`${SUPA}/rest/v1/clips`, {
+    method: "POST",
+    headers: {
+      apikey: SUPA_KEY,
+      Authorization: `Bearer ${SUPA_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(rows),
+  });
+  if (!res.ok) {
+    throw new Error(`insert clips failed ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  }
+  return await res.json();
+}
+
+async function setJobStatus(jobId, status, errorMessage) {
+  await fetch(`${SUPA}/rest/v1/clip_jobs?id=eq.${jobId}`, {
+    method: "PATCH",
+    headers: {
+      apikey: SUPA_KEY,
+      Authorization: `Bearer ${SUPA_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({ status, error_message: errorMessage ?? null }),
+  });
+}
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
@@ -19,6 +106,75 @@ app.use((req, res, next) => {
     return res.status(403).json({ error: "Forbidden" });
   }
   next();
+});
+
+// Full upload pipeline: download the user's file → Whisper transcript → AI
+// clip selection → insert clips → render each from the file (real footage +
+// audio + captions). No YouTube, so nothing is IP-blocked. Async.
+app.post("/process-upload", (req, res) => {
+  const { jobId, key, count, style, platforms } = req.body || {};
+  if (!jobId || !key) {
+    return res.status(400).json({ error: "jobId and key required" });
+  }
+  res.status(202).json({ accepted: true });
+
+  (async () => {
+    const localName = `upload-${jobId}.mp4`;
+    const localPath = path.join(SOURCES_DIR, localName);
+    const n = Math.min(Math.max(1, Number(count) || 3), 20);
+    try {
+      await mkdir(SOURCES_DIR, { recursive: true });
+      await downloadUpload(key, localPath);
+
+      const tr = transcribeFile(localPath);
+      if (!tr.ok || !tr.segments?.length) {
+        throw new Error("transcription failed: " + (tr.error || "no speech detected"));
+      }
+
+      const metas = await generateClipsFromTranscript({
+        segments: tr.segments,
+        count: n,
+        style: style || "Educational",
+        platforms:
+          Array.isArray(platforms) && platforms.length ? platforms : ["TikTok"],
+      });
+
+      const inserted = await insertClips(jobId, metas.slice(0, n));
+      const signedUrl = await signUploadUrl(key);
+
+      for (let i = 0; i < inserted.length; i++) {
+        const row = inserted[i];
+        const meta = metas[i] || {};
+        const start = Number(meta.startSeconds) || 0;
+        const end = Number(meta.endSeconds) || start + 30;
+        try {
+          const url = await renderUploadedClip({
+            videoRel: signedUrl,
+            start,
+            end,
+            id: row.id,
+            key: `clips/${row.id}.mp4`,
+            hook: meta.hook || "",
+            segments: tr.segments,
+          });
+          if (url) await updateClip(row.id, url, "clips");
+        } catch (e) {
+          console.error(
+            `[process-upload] render clip ${row.id} failed:`,
+            e?.message || e
+          );
+        }
+      }
+
+      await setJobStatus(jobId, "done");
+      console.log(`[process-upload] ${jobId} done (${inserted.length} clips)`);
+    } catch (err) {
+      console.error(`[process-upload] ${jobId} failed:`, err?.message || err);
+      await setJobStatus(jobId, "failed", String(err?.message || err).slice(0, 300));
+    } finally {
+      await rm(localPath, { force: true }).catch(() => {});
+    }
+  })();
 });
 
 // Returns the real video transcript (timed segments) so the app can generate

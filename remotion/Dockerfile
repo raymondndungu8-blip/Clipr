@@ -8,8 +8,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0 \
       libcairo2 libasound2 libatspi2.0-0 libx11-6 libxcb1 libxext6 libxi6 \
       libglib2.0-0 \
-    && pip3 install --break-system-packages --no-cache-dir yt-dlp youtube-transcript-api \
+    && pip3 install --break-system-packages --no-cache-dir yt-dlp youtube-transcript-api faster-whisper \
     && rm -rf /var/lib/apt/lists/*
+
+# Pre-download the Whisper model so the first upload doesn't pay for it.
+ENV WHISPER_MODEL=base
+RUN python3 -c "from faster_whisper import WhisperModel; WhisperModel('base', device='cpu', compute_type='int8')"
 
 WORKDIR /app
 COPY package*.json ./

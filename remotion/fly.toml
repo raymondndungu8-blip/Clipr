@@ -14,6 +14,6 @@ primary_region = "jnb"
   min_machines_running = 0
 
 [[vm]]
-  size = "shared-cpu-1x"
-  memory = "2048mb"
-  cpus = 1
+  size = "shared-cpu-2x"
+  memory = "4096mb"
+  cpus = 2

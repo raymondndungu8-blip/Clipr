@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { Upload } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import type { Tables } from "@/types/database";
@@ -46,6 +47,8 @@ const STEPS = [
 export default function ClipperPage() {
   const [url, setUrl] = useState("");
   const [topic, setTopic] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [style, setStyle] = useState<(typeof STYLES)[number]>("Educational");
   const [platforms, setPlatforms] = useState<Platform[]>(["TikTok"]);
   const [count, setCount] = useState(3);
@@ -91,9 +94,39 @@ export default function ClipperPage() {
     setClips(data ?? []);
   }
 
+  // Uploads are processed async on the worker (transcribe → generate → render),
+  // so poll the job until it finishes, then load the clips.
+  async function pollJob(jobId: string) {
+    const supabase = getSupabase();
+    const deadline = Date.now() + 15 * 60 * 1000;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 5000));
+      const { data } = await supabase
+        .from("clip_jobs")
+        .select("status, error_message")
+        .eq("id", jobId)
+        .single();
+      if (data?.status === "done") {
+        await loadClips(jobId);
+        setJobStatus("done");
+        setLoading(false);
+        return;
+      }
+      if (data?.status === "failed") {
+        toast.error(data.error_message ?? "Processing failed. Please try again.");
+        setJobStatus("failed");
+        setLoading(false);
+        return;
+      }
+      setJobStatus("processing");
+    }
+    toast.error("Still processing — check back in a moment.");
+    setLoading(false);
+  }
+
   async function onGenerate() {
-    if (!url.trim() && !topic.trim()) {
-      toast.error("Add a URL or a topic to clip.");
+    if (!file && !url.trim() && !topic.trim()) {
+      toast.error("Upload a video, or add a URL or topic.");
       return;
     }
     if (platforms.length === 0) {
@@ -109,6 +142,31 @@ export default function ClipperPage() {
     setJobStatus("pending");
 
     try {
+      if (file) {
+        // 1. Signed upload URL → 2. upload straight to storage → 3. process.
+        const ext = (file.name.split(".").pop() || "mp4").toLowerCase();
+        const { path, token } = await apiPost<{ path: string; token: string }>(
+          "/api/upload-url",
+          { ext }
+        );
+        const { error: upErr } = await getSupabase()
+          .storage.from("uploads")
+          .uploadToSignedUrl(path, token, file);
+        if (upErr) {
+          toast.error(`Upload failed: ${upErr.message}`);
+          setJobStatus(null);
+          setLoading(false);
+          return;
+        }
+        const resp = await apiPost<{ jobId: string; status?: string }>(
+          "/api/clip",
+          { uploadKey: path, style, platforms, count }
+        );
+        setJobStatus("processing");
+        await pollJob(resp.jobId);
+        return;
+      }
+
       const { jobId } = await apiPost<{ jobId: string }>("/api/clip", {
         url: url.trim() || undefined,
         topic: topic.trim() || undefined,
@@ -116,8 +174,7 @@ export default function ClipperPage() {
         platforms,
         count,
       });
-      // The server returns once the clips are created — load them right away
-      // (no realtime race waiting for a status that already flipped).
+      // URL/topic clips are created synchronously — load them right away.
       await loadClips(jobId);
       setJobStatus("done");
       setLoading(false);
@@ -188,6 +245,36 @@ export default function ClipperPage() {
             {fieldErrors.topic && (
               <p className="text-xs text-clipr-error">{fieldErrors.topic[0]}</p>
             )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="h-px flex-1 bg-clipr-border/60" />
+            <span className="font-mono text-xs text-clipr-secondary">— OR —</span>
+            <span className="h-px flex-1 bg-clipr-border/60" />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label>Upload a video</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              className="justify-start"
+            >
+              <Upload className="size-3.5" />
+              <span className="truncate">{file ? file.name : "Choose a file"}</span>
+            </Button>
+            <p className="text-xs text-clipr-dim">
+              Best results — captions match your video exactly, with real footage
+              and sound. Up to 50&nbsp;MB.
+            </p>
           </div>
 
           <div className="flex flex-col gap-2">

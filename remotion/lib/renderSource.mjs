@@ -264,6 +264,47 @@ export async function renderCaptionsClip(opts) {
 }
 
 /**
+ * Render a clip from an ALREADY-LOCAL uploaded file (no download/yt-dlp).
+ * Real footage + audio + Whisper captions. videoRel is relative to public/.
+ * @param {{videoRel:string,start:number,end:number,id:string,key?:string,hook?:string,segments?:{start:number,end:number,text:string}[],accent?:string}} opts
+ */
+export async function renderUploadedClip(opts) {
+  const { videoRel, start, end, id } = opts;
+  const clipLen = Math.max(1, end - start);
+  const key = opts.key || `clips/${id}.mp4`;
+  const hook = opts.hook ?? "";
+  const accent = opts.accent ?? "#3d7bff";
+  const captions = buildCaptions(opts.segments || [], start, end, clipLen);
+
+  const inputProps = {
+    videoSrc: videoRel,
+    startSeconds: start,
+    endSeconds: end,
+    hook,
+    captions,
+    accent,
+  };
+  const serveUrl = await getServeUrl();
+  const composition = await selectComposition({
+    serveUrl,
+    id: "SourceClip",
+    inputProps,
+  });
+  const outPath = path.join(ROOT, "out", `${id}.mp4`);
+  await mkdir(path.dirname(outPath), { recursive: true });
+  await renderMedia({
+    composition,
+    serveUrl,
+    codec: "h264",
+    outputLocation: outPath,
+    inputProps,
+  });
+  const publicUrl = await uploadVideo(outPath, key);
+  await rm(outPath, { force: true }).catch(() => {});
+  return publicUrl;
+}
+
+/**
  * Render a real-footage clip and upload it. Returns the public MP4 URL. If the
  * source download is blocked (YouTube bot wall, no proxy), falls back to a
  * captions-only clip so there's always a downloadable, captioned output.
