@@ -39,7 +39,8 @@
       "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\).on\\('end',\\(\\)=>{try{JSON.parse\\(d\\).forEach\\(b=>console.log\\(b.id,'public='+b.public,'limit='+b.file_size_limit\\)\\)}catch\\(e\\){console.log\\(d.slice\\(0,200\\)\\)}}\\)\")",
       "Bash(curl -s -A clipr-admin/1.0 -X PUT https://uimdgvesfbvaezlfsmrs.supabase.co/storage/v1/bucket/uploads -H 'apikey: sb_secret_cmjnTvCTea315TNpfkwyBw_e1ZjK9et' -H 'Authorization: Bearer sb_secret_cmjnTvCTea315TNpfkwyBw_e1ZjK9et' -H 'Content-Type: application/json' -d '{\"public\":false,\"file_size_limit\":524288000,\"allowed_mime_types\":[\"video/mp4\",\"video/quicktime\",\"video/webm\",\"video/x-matroska\"]}')",
       "Bash(curl -s -A clipr-admin/1.0 https://uimdgvesfbvaezlfsmrs.supabase.co/storage/v1/bucket/uploads -H 'apikey: sb_secret_cmjnTvCTea315TNpfkwyBw_e1ZjK9et' -H 'Authorization: Bearer sb_secret_cmjnTvCTea315TNpfkwyBw_e1ZjK9et')",
-      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\).on\\('end',\\(\\)=>{try{const b=JSON.parse\\(d\\);console.log\\('uploads limit=',b.file_size_limit\\)}catch\\(e\\){console.log\\(d.slice\\(0,150\\)\\)}}\\)\")"
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\).on\\('end',\\(\\)=>{try{const b=JSON.parse\\(d\\);console.log\\('uploads limit=',b.file_size_limit\\)}catch\\(e\\){console.log\\(d.slice\\(0,150\\)\\)}}\\)\")",
+      "Bash(curl -s --max-time 50 \"https://clipr-rn-render.fly.dev/health\")"
     ]
   }
 }

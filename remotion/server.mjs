@@ -156,6 +156,7 @@ app.post("/process-upload", (req, res) => {
             key: `clips/${row.id}.mp4`,
             hook: meta.hook || "",
             segments: tr.segments,
+            words: tr.words || [],
           });
           if (url) await updateClip(row.id, url, "clips");
         } catch (e) {

@@ -276,12 +276,22 @@ export async function renderUploadedClip(opts) {
   const accent = opts.accent ?? "#3d7bff";
   const captions = buildCaptions(opts.segments || [], start, end, clipLen);
 
+  // Word-level cues (clip-relative) for karaoke captions.
+  const words = (opts.words || [])
+    .filter((w) => w.end > start && w.start < end)
+    .map((w) => ({
+      text: String(w.text),
+      start: Math.max(0, w.start - start),
+      end: Math.min(clipLen, w.end - start),
+    }));
+
   const inputProps = {
     videoSrc: videoRel,
     startSeconds: start,
     endSeconds: end,
     hook,
     captions,
+    words,
     accent,
   };
   const serveUrl = await getServeUrl();
