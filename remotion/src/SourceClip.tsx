@@ -37,7 +37,8 @@ export type SourceClipProps = z.infer<typeof sourceClipSchema>;
  * cropped to vertical 9:16, with the source's word/line-timed captions burned in
  * (karaoke style) and the hook across the top.
  */
-const WORDS_PER_LINE = 4;
+const WORDS_PER_LINE = 3;
+const HIGHLIGHT = "#22e06a"; // bright green for the active (spoken) word
 
 export const SourceClip: React.FC<SourceClipProps> = ({
   videoSrc,
@@ -135,14 +136,14 @@ export const SourceClip: React.FC<SourceClipProps> = ({
         <div
           style={{
             position: "absolute",
-            bottom: "18%",
+            bottom: "15%",
             left: 0,
             right: 0,
             display: "flex",
             flexWrap: "wrap",
             justifyContent: "center",
             alignItems: "center",
-            gap: "0 20px",
+            gap: "0 22px",
             padding: "0 60px",
           }}
         >
@@ -166,7 +167,7 @@ export const SourceClip: React.FC<SourceClipProps> = ({
                   textTransform: "uppercase",
                   letterSpacing: "-0.01em",
                   lineHeight: 1.05,
-                  color: isActive ? accent : "#fff",
+                  color: isActive ? HIGHLIGHT : "#fff",
                   WebkitTextStroke: "4px #000",
                   // @ts-expect-error paintOrder is valid CSS, missing in types
                   paintOrder: "stroke fill",

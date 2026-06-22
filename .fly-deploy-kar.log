@@ -1,0 +1,6 @@
+==> Verifying app config
+Validating C:\Users\HomePC\Clipr\remotion\fly.toml
+[32m✓[0m Configuration is valid
+--> Verified app config
+Warning: Metrics send issue: metrics send failed with status 401
+Error: verify: invalid token: all tokens missing third-party discharge tokens; no verified tokens; token 38bb30b3-ffbc-5700-b921-3e3620006fe2: missing third-party discharge token (Request ID: 01KVQZ1KMX736P02X5EFA1QVM1-jnb) (Trace ID: e4ad7b48889b83d248b1ac26c0727829)
