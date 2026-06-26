@@ -40,6 +40,11 @@ export const ClipInputSchema = z
     count: z.coerce.number().int().min(1).max(20).optional(),
     /** Storage path of an uploaded video (Supabase "uploads" bucket). */
     uploadKey: z.string().min(1).max(300).optional(),
+    /** Caption highlight colour from the chosen caption style. */
+    accent: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
   })
   .refine((data) => Boolean(data.url || data.topic || data.uploadKey), {
     message: "Provide a video URL, a topic, or an uploaded video.",

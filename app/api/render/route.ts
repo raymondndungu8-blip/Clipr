@@ -13,6 +13,11 @@ const RenderSchema = z
   .object({
     clipId: z.uuid().optional(),
     videoId: z.uuid().optional(),
+    /** Caption highlight colour from the chosen caption style. */
+    accent: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
   })
   .refine((d) => d.clipId || d.videoId, {
     message: "clipId or videoId is required",
@@ -34,6 +39,8 @@ export async function POST(req: NextRequest) {
       { status: 422 }
     );
   }
+
+  const accent = parsed.data.accent ?? "#22e06a";
 
   // Faceless video: render the AI captions + hook over a gradient (no source).
   if (parsed.data.videoId) {
@@ -71,7 +78,7 @@ export async function POST(req: NextRequest) {
             hook,
             captions,
             gradient,
-            accent: "#3d7bff",
+            accent,
             key,
           }),
         });
@@ -92,7 +99,7 @@ export async function POST(req: NextRequest) {
     try {
       const url = await renderAndUpload({
         compositionId: "CaptionClip",
-        props: { hook, captions, gradient, accent: "#3d7bff" },
+        props: { hook, captions, gradient, accent },
         key,
       });
       await supabase
@@ -142,7 +149,7 @@ export async function POST(req: NextRequest) {
       hook: clip.hook ?? "",
       captions: clip.captions ?? [],
       gradient: clip.bg_gradient ?? undefined,
-      accent: "#3d7bff",
+      accent,
       key: `clips/${clip.id}.mp4`,
     };
     if (youtubeId && hasSegment && job?.source_url) {
@@ -196,7 +203,7 @@ export async function POST(req: NextRequest) {
           gradient:
             clip.bg_gradient ??
             "linear-gradient(160deg, #14213d 0%, #0a0e1a 55%, #0e1b33 100%)",
-          accent: "#3d7bff",
+          accent,
         },
         key: `clips/${clip.id}.mp4`,
       });

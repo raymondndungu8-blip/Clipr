@@ -112,7 +112,7 @@ app.use((req, res, next) => {
 // clip selection → insert clips → render each from the file (real footage +
 // audio + captions). No YouTube, so nothing is IP-blocked. Async.
 app.post("/process-upload", (req, res) => {
-  const { jobId, key, count, style, platforms } = req.body || {};
+  const { jobId, key, count, style, platforms, accent } = req.body || {};
   if (!jobId || !key) {
     return res.status(400).json({ error: "jobId and key required" });
   }
@@ -157,6 +157,7 @@ app.post("/process-upload", (req, res) => {
             hook: meta.hook || "",
             segments: tr.segments,
             words: tr.words || [],
+            accent: accent || "#22e06a",
           });
           if (url) await updateClip(row.id, url, "clips");
         } catch (e) {

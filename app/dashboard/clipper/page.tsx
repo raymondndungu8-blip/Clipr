@@ -24,6 +24,12 @@ import {
   StaggerItem,
 } from "@/components/motion";
 import { apiPost, ApiError, type FieldIssues } from "@/components/lib/api";
+import {
+  CAPTION_STYLES,
+  DEFAULT_CAPTION_STYLE,
+  accentForStyle,
+  type CaptionStyleName,
+} from "@/lib/captionStyles";
 
 type Clip = Tables<"clips">;
 type JobStatus = "pending" | "processing" | "done" | "failed";
@@ -52,6 +58,8 @@ export default function ClipperPage() {
   const [style, setStyle] = useState<(typeof STYLES)[number]>("Educational");
   const [platforms, setPlatforms] = useState<Platform[]>(["TikTok"]);
   const [count, setCount] = useState(3);
+  const [captionStyle, setCaptionStyle] =
+    useState<CaptionStyleName>(DEFAULT_CAPTION_STYLE);
 
   const [loading, setLoading] = useState(false);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
@@ -160,7 +168,13 @@ export default function ClipperPage() {
         }
         const resp = await apiPost<{ jobId: string; status?: string }>(
           "/api/clip",
-          { uploadKey: path, style, platforms, count }
+          {
+            uploadKey: path,
+            style,
+            platforms,
+            count,
+            accent: accentForStyle(captionStyle),
+          }
         );
         setJobStatus("processing");
         await pollJob(resp.jobId);
@@ -173,6 +187,7 @@ export default function ClipperPage() {
         style,
         platforms,
         count,
+        accent: accentForStyle(captionStyle),
       });
       // URL/topic clips are created synchronously — load them right away.
       await loadClips(jobId);
@@ -337,6 +352,34 @@ export default function ClipperPage() {
           </div>
 
           <div className="flex flex-col gap-2">
+            <Label>Caption style</Label>
+            <div className="flex flex-wrap gap-2">
+              {CAPTION_STYLES.map((s) => (
+                <button
+                  key={s.name}
+                  type="button"
+                  onClick={() => setCaptionStyle(s.name)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition-all active:scale-95",
+                    captionStyle === s.name
+                      ? "neo-inset text-clipr-text"
+                      : "bg-clipr-card neo-raised-sm text-clipr-secondary hover:text-clipr-text"
+                  )}
+                >
+                  <span
+                    className="size-3 shrink-0 rounded-full"
+                    style={{ backgroundColor: s.accent }}
+                  />
+                  {s.name}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-clipr-dim">
+              The highlighted-word colour for your clip captions.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
             <Label>Platforms</Label>
             <div className="flex flex-wrap gap-2">
               {PLATFORMS.map((p) => (
@@ -379,7 +422,11 @@ export default function ClipperPage() {
             <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {clips.map((clip) => (
                 <StaggerItem key={clip.id}>
-                  <ClipCard clip={clip} sourceUrl={clipSourceUrl} />
+                  <ClipCard
+                    clip={clip}
+                    sourceUrl={clipSourceUrl}
+                    accent={accentForStyle(captionStyle)}
+                  />
                 </StaggerItem>
               ))}
             </Stagger>

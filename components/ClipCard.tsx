@@ -7,6 +7,7 @@ import type { Tables } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import VideoPreview from "@/components/VideoPreview";
+import { youtubeIdFromUrl } from "@/lib/youtube";
 import PostDialog from "@/components/PostDialog";
 import { apiPost, ApiError } from "@/components/lib/api";
 import { saveVideo } from "@/lib/download";
@@ -15,14 +16,18 @@ type Clip = Tables<"clips">;
 
 export default function ClipCard({
   clip,
+  sourceUrl,
+  accent,
 }: {
   clip: Clip;
-  /** Kept for call-site compatibility; previews no longer embed YouTube. */
   sourceUrl?: string | null;
+  /** Caption highlight colour from the chosen caption style. */
+  accent?: string;
 }) {
   const [postOpen, setPostOpen] = useState(false);
   const [renderedUrl, setRenderedUrl] = useState<string | null>(clip.r2_url);
   const [rendering, setRendering] = useState(false);
+  const youtubeId = youtubeIdFromUrl(sourceUrl);
 
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
   function getSupabase() {
@@ -50,7 +55,7 @@ export default function ClipCard({
     try {
       const resp = await apiPost<{ url?: string; status?: string }>(
         "/api/render",
-        { clipId: clip.id }
+        { clipId: clip.id, accent }
       );
       if (resp.url) {
         setRenderedUrl(resp.url);
@@ -106,6 +111,8 @@ export default function ClipCard({
           duration={clip.duration ?? undefined}
           bgGradient={clip.bg_gradient ?? undefined}
           videoUrl={renderedUrl}
+          youtubeId={youtubeId}
+          accent={accent}
         />
       </div>
 

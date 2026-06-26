@@ -18,16 +18,27 @@ export const CAPTION_STYLES: CaptionStyle[] = [
   "Ice Blue",
 ];
 
-const STYLE_COLORS: Record<CaptionStyle, { bg: string; fg: string }> = {
-  "Bold Gold": { bg: "#C9A84C", fg: "#0A0A0A" },
-  "Pure White": { bg: "#FFFFFF", fg: "#0A0A0A" },
-  "Fire Red": { bg: "#E05A5A", fg: "#FFFFFF" },
-  "Neon Green": { bg: "#4CAF7A", fg: "#0A0A0A" },
-  "Ice Blue": { bg: "#5A9BE0", fg: "#FFFFFF" },
+const STYLE_TO_ACCENT: Record<CaptionStyle, string> = {
+  "Bold Gold": "#C9A84C",
+  "Pure White": "#FFFFFF",
+  "Fire Red": "#E05A5A",
+  "Neon Green": "#22e06a",
+  "Ice Blue": "#5A9BE0",
 };
 
 const DEFAULT_GRADIENT =
   "linear-gradient(160deg, #14213d 0%, #0a0e1a 55%, #0e1b33 100%)";
+
+/** Pick readable text for a given background colour. */
+function contrastText(hex: string): string {
+  const c = hex.replace("#", "");
+  if (c.length < 6) return "#0A0A0A";
+  const r = parseInt(c.slice(0, 2), 16);
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16);
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return lum > 0.6 ? "#0A0A0A" : "#FFFFFF";
+}
 
 type VideoPreviewProps = {
   hook?: string;
@@ -35,12 +46,13 @@ type VideoPreviewProps = {
   duration?: string;
   bgGradient?: string;
   videoUrl?: string | null;
-  /** YouTube video id — renders the real clip segment as a live preview. */
+  /** YouTube id — shows the real video frame (static thumbnail, no watermark). */
   youtubeId?: string | null;
-  startSeconds?: number | null;
-  endSeconds?: number | null;
+  /** Caption highlight colour (overrides captionStyle). */
+  accent?: string;
+  /** Named caption style (used by the Caption Animator). */
   captionStyle?: CaptionStyle;
-  /** Force the preview to show a specific caption index (disables cycling). */
+  /** Force a specific caption index (disables cycling). */
   activeIndex?: number;
   className?: string;
 };
@@ -54,26 +66,22 @@ export default function VideoPreview({
   bgGradient,
   videoUrl,
   youtubeId,
-  startSeconds,
-  endSeconds,
-  captionStyle = "Bold Gold",
+  accent,
+  captionStyle,
   activeIndex,
   className,
 }: VideoPreviewProps) {
+  const effectiveAccent =
+    accent ?? (captionStyle ? STYLE_TO_ACCENT[captionStyle] : "#22e06a");
   const safeCaptions = captions?.filter(Boolean) ?? [];
   const [index, setIndex] = useState(0);
-  // Defer the (heavy) YouTube iframe until the user taps play. Rendering many
-  // autoplaying embeds at once freezes phones/laptops — a thumbnail facade keeps
-  // the page light and fast no matter how many clips are shown.
-  const [playing, setPlaying] = useState(false);
-
   const controlled = typeof activeIndex === "number";
 
   useEffect(() => {
     if (controlled || safeCaptions.length <= 1) return;
     const id = setInterval(() => {
       setIndex((i) => (i + 1) % safeCaptions.length);
-    }, 1200);
+    }, 1100);
     return () => clearInterval(id);
   }, [controlled, safeCaptions.length]);
 
@@ -81,41 +89,28 @@ export default function VideoPreview({
     ? safeCaptions[activeIndex ?? 0]
     : safeCaptions[index % Math.max(safeCaptions.length, 1)];
 
-  const colors = STYLE_COLORS[captionStyle] ?? STYLE_COLORS["Bold Gold"];
+  const fg = contrastText(effectiveAccent);
+  const showThumb = !videoUrl && !!youtubeId;
 
-  const isEmbed = !videoUrl && !!youtubeId;
-  const embedSrc = isEmbed
-    ? `https://www.youtube.com/embed/${youtubeId}?` +
-      new URLSearchParams({
-        autoplay: "1",
-        mute: "1",
-        controls: "1",
-        rel: "0",
-        modestbranding: "1",
-        playsinline: "1",
-        loop: "1",
-        playlist: youtubeId!,
-        ...(typeof startSeconds === "number"
-          ? { start: String(Math.max(0, startSeconds)) }
-          : {}),
-        ...(typeof endSeconds === "number"
-          ? { end: String(endSeconds) }
-          : {}),
-      }).toString()
-    : null;
-
-  // Caption + hook + duration overlay, shown over the gradient mock and the
-  // live YouTube clip alike. pointer-events-none so player controls stay usable.
   const overlay = (
     <div className="pointer-events-none absolute inset-0">
+      {/* dark scrim for legibility */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 30%, transparent 60%, rgba(0,0,0,0.55) 100%)",
+        }}
+      />
       {hook && (
-        <div className="absolute inset-x-0 px-4 text-center" style={{ top: "8%" }}>
+        <div className="absolute inset-x-0 px-3 text-center" style={{ top: "7%" }}>
           <p
-            className="font-sans font-bold leading-snug"
+            className="font-sans font-extrabold uppercase leading-tight"
             style={{
-              fontSize: 15,
+              fontSize: 16,
               color: "#FFFFFF",
-              textShadow: "0 2px 8px rgba(0,0,0,0.85)",
+              letterSpacing: "-0.01em",
+              textShadow: "0 2px 10px rgba(0,0,0,0.9)",
             }}
           >
             {hook}
@@ -125,19 +120,19 @@ export default function VideoPreview({
 
       {shown && (
         <div
-          className="absolute inset-x-0 flex justify-center px-4"
-          style={{ bottom: "16%" }}
+          className="absolute inset-x-0 flex justify-center px-3"
+          style={{ bottom: "15%" }}
         >
           <span
             key={controlled ? `c-${activeIndex}` : `c-${index}`}
-            className="animate-caption-flash inline-block rounded-md px-2.5 py-1 font-mono font-bold uppercase"
+            className="animate-caption-flash inline-block rounded-lg px-3 py-1.5 font-sans font-extrabold uppercase"
             style={{
-              fontSize: 14,
-              lineHeight: 1.1,
-              backgroundColor: colors.bg,
-              color: colors.fg,
-              letterSpacing: "0.02em",
-              boxShadow: "0 2px 10px rgba(0,0,0,0.4)",
+              fontSize: 17,
+              lineHeight: 1.05,
+              backgroundColor: effectiveAccent,
+              color: fg,
+              letterSpacing: "-0.01em",
+              boxShadow: "0 3px 14px rgba(0,0,0,0.55)",
             }}
           >
             {shown}
@@ -181,55 +176,18 @@ export default function VideoPreview({
               />
               {overlay}
             </>
-          ) : isEmbed ? (
-            playing ? (
-              <>
-                <iframe
-                  src={embedSrc!}
-                  title="Clip preview"
-                  allow="autoplay; encrypted-media; picture-in-picture"
-                  allowFullScreen
-                  className="absolute inset-0 h-full w-full border-0 bg-black"
-                />
-                {overlay}
-              </>
-            ) : (
-              <>
-                {/* Lightweight thumbnail facade — taps load the real player. */}
-                <button
-                  type="button"
-                  onClick={() => setPlaying(true)}
-                  aria-label="Play clip preview"
-                  className="absolute inset-0 h-full w-full"
-                >
-                  <img
-                    src={`https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`}
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                    className="absolute inset-0 h-full w-full bg-black object-cover"
-                  />
-                  <span className="absolute inset-0 flex items-center justify-center">
-                    <span
-                      className="flex items-center justify-center rounded-full transition-transform active:scale-90"
-                      style={{
-                        width: 44,
-                        height: 44,
-                        backgroundColor: "var(--clipr-gold)",
-                        boxShadow: "0 0 24px 4px rgba(61,123,255,0.5)",
-                      }}
-                    >
-                      <Play
-                        fill="#FFFFFF"
-                        stroke="#FFFFFF"
-                        style={{ width: 18, height: 18, marginLeft: 2 }}
-                      />
-                    </span>
-                  </span>
-                </button>
-                {overlay}
-              </>
-            )
+          ) : showThumb ? (
+            <>
+              {/* real video frame — static thumbnail, no YouTube player/watermark */}
+              <img
+                src={`https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="absolute inset-0 h-full w-full bg-black object-cover"
+              />
+              {overlay}
+            </>
           ) : (
             <>
               <div
@@ -237,8 +195,6 @@ export default function VideoPreview({
                 style={{ background: bgGradient || DEFAULT_GRADIENT }}
               />
               <div className="clipr-scanlines absolute inset-0" />
-
-              {/* center play button (mock only) */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <div
                   className="flex items-center justify-center rounded-full"
@@ -256,7 +212,6 @@ export default function VideoPreview({
                   />
                 </div>
               </div>
-
               {overlay}
             </>
           )}

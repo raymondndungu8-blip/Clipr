@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
 
   const { url, topic, style, platforms, uploadKey } = parsed.data;
   const count = parsed.data.count ?? 3;
+  const accent = parsed.data.accent ?? "#22e06a";
 
   // Gate: a social account must be connected (a manually-added page OR a
   // Zernio-connected account) before clipping.
@@ -152,6 +153,7 @@ export async function POST(req: NextRequest) {
           count,
           style,
           platforms,
+          accent,
         }),
       });
       if (!res.ok && res.status !== 202) {
