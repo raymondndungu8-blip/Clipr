@@ -15,6 +15,23 @@ interface ClipMeta {
   startSeconds: number;
   endSeconds: number;
   bgGradient: string;
+  viralityScore: number;
+  scoreReason: string;
+  viralityTag: string;
+}
+
+/** Opus-style target-length guidance for the AI. */
+function lengthGuide(preset?: string): string {
+  switch (preset) {
+    case "<30s":
+      return "Each clip MUST be 15-30 seconds.";
+    case "30-60s":
+      return "Each clip MUST be 30-60 seconds.";
+    case "60-90s":
+      return "Each clip MUST be 60-90 seconds.";
+    default:
+      return "Each clip should be 20-60 seconds — whatever length best captures a complete, self-contained moment.";
+  }
 }
 
 type TranscriptSegment = { start: number; dur: number; text: string };
@@ -154,6 +171,8 @@ export async function POST(req: NextRequest) {
           style,
           platforms,
           accent,
+          clipLength: parsed.data.clipLength,
+          topic: topic ?? null,
         }),
       });
       if (!res.ok && res.status !== 202) {
@@ -202,29 +221,36 @@ export async function POST(req: NextRequest) {
       ? `the video at ${url}${topic ? ` (about: ${topic})` : ""}`
       : `the topic "${topic}"`;
 
+    const focus = topic
+      ? `\n\nThe creator wants clips about: "${topic}". Prioritise moments matching that.`
+      : "";
+
     const transcriptBlock = transcript
-      ? `\n\nHere is the ACTUAL transcript of the video (each line is "[startSecond] spoken text"):\n"""\n${condenseTranscript(transcript)}\n"""\n\nUse ONLY this transcript. Pick the ${count} most viral/compelling moments that ACTUALLY occur in it. For each clip, set startSeconds/endSeconds to the real timestamps from the transcript (a tight 20-60s window around the moment), and write the title, hook, description and captions from what is ACTUALLY said in that window. Captions must be real phrases spoken in the clip. Do not invent topics that aren't in the transcript.`
+      ? `\n\nHere is the ACTUAL transcript of the video (each line is "[startSecond] spoken text"):\n"""\n${condenseTranscript(transcript)}\n"""\n\nUse ONLY this transcript. Choose the ${count} most viral, self-contained moments that ACTUALLY occur in it — each must have a strong hook in its first seconds AND a satisfying payoff/complete thought (not a random slice). Set startSeconds/endSeconds to the real transcript timestamps. Write the title, hook, description and captions from what is ACTUALLY said. Captions must be real phrases spoken in the clip. Do not invent anything not in the transcript.`
       : "";
 
     const clipsJson = await generateJSON<ClipMeta[]>({
       system:
-        "You are a viral short-form video producer. You turn real video transcripts into accurate short clips. Return valid JSON only.",
-      prompt: `Create exactly ${count} viral short-form clip concept${count === 1 ? "" : "s"} for ${source}.
-Style: ${style}. Target platforms: ${platforms.join(", ")}.${transcriptBlock}
+        "You are an expert viral short-form video producer (like Opus Clip). You analyse long videos for visual, audio and sentiment cues and turn them into accurate, viral-worthy vertical shorts, each scored for viral potential. Return valid JSON only.",
+      prompt: `From ${source}, select the ${count} BEST short-form clip${count === 1 ? "" : "s"} — the moments most likely to go viral.
+Style: ${style}. Target platforms: ${platforms.join(", ")}. ${lengthGuide(parsed.data.clipLength)}${focus}${transcriptBlock}
 
-Return a JSON array of exactly ${count} objects, each with:
-- "title": punchy clip title (under 60 chars) based on the clip's actual content
-- "hook": scroll-stopping first line, drawn from what's actually said
-- "description": 1 short post description tailored to the platforms
-- "captions": array of exactly 5 short caption chunks, each 2-4 words, ALL UPPERCASE${transcript ? ", taken from words actually spoken in the clip" : ""}
+For each clip return an object with:
+- "title": punchy title (under 60 chars) from the clip's real content
+- "hook": scroll-stopping first line drawn from what's actually said
+- "description": 1 short post description for the platforms
+- "captions": array of exactly 5 short chunks, 2-4 words, ALL UPPERCASE${transcript ? ", from words actually spoken in the clip" : ""}
 - "hashtags": array of exactly 5 relevant hashtags (with #)
-- "duration": clip length as "0:NN" (e.g. "0:34"), between 15 and 60 seconds
-- "startSeconds": integer start time (in seconds) of this moment within the source video
-- "endSeconds": integer end time (in seconds); endSeconds - startSeconds must equal the duration.${transcript ? " Use the real transcript timestamps." : " Pick different, non-overlapping moments spread across a typical 8-15 minute video."}
-- "bgGradient": a dark CSS linear-gradient string suited to the mood (e.g. "linear-gradient(135deg, #0f0c29, #302b63)")
+- "duration": "0:NN" matching the length rule above
+- "startSeconds": integer start (seconds) in the source${transcript ? " (real transcript timestamp)" : ""}
+- "endSeconds": integer end; endSeconds - startSeconds equals the duration${transcript ? "" : ". Pick different, non-overlapping moments across a typical 8-15 min video"}
+- "bgGradient": a dark CSS linear-gradient string suited to the mood
+- "viralityScore": integer 0-100 predicting viral potential (be honest and differentiated — strong hook + emotion + payoff scores high; flat/rambling scores low)
+- "viralityTag": 1-3 word reason it could pop (e.g. "Strong Hook", "Emotional", "Controversial", "Actionable", "Surprising")
+- "scoreReason": one short sentence on why it scored that
 
-Return ONLY the JSON array. No markdown, no commentary.`,
-      maxTokens: Math.min(Math.max(1800, count * 650 + 600), 12000),
+Return ONLY a JSON array of exactly ${count} objects, sorted by viralityScore descending. No markdown, no commentary.`,
+      maxTokens: Math.min(Math.max(2200, count * 750 + 700), 14000),
     });
 
     if (!Array.isArray(clipsJson) || clipsJson.length === 0) {
@@ -246,6 +272,12 @@ Return ONLY the JSON array. No markdown, no commentary.`,
         end_seconds:
           typeof clip.endSeconds === "number" ? clip.endSeconds : null,
         bg_gradient: clip.bgGradient,
+        virality_score:
+          typeof clip.viralityScore === "number"
+            ? Math.max(0, Math.min(100, Math.round(clip.viralityScore)))
+            : null,
+        score_reason: clip.scoreReason ?? null,
+        virality_tag: clip.viralityTag ?? null,
       }))
     );
     if (clipsError) {

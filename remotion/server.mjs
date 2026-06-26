@@ -62,6 +62,11 @@ async function insertClips(jobId, metas) {
       ? Math.floor(Number(c.endSeconds))
       : null,
     bg_gradient: c.bgGradient,
+    virality_score: Number.isFinite(Number(c.viralityScore))
+      ? Math.max(0, Math.min(100, Math.round(Number(c.viralityScore))))
+      : null,
+    score_reason: c.scoreReason ?? null,
+    virality_tag: c.viralityTag ?? null,
   }));
   const res = await fetch(`${SUPA}/rest/v1/clips`, {
     method: "POST",
@@ -112,7 +117,8 @@ app.use((req, res, next) => {
 // clip selection → insert clips → render each from the file (real footage +
 // audio + captions). No YouTube, so nothing is IP-blocked. Async.
 app.post("/process-upload", (req, res) => {
-  const { jobId, key, count, style, platforms, accent } = req.body || {};
+  const { jobId, key, count, style, platforms, accent, clipLength, topic } =
+    req.body || {};
   if (!jobId || !key) {
     return res.status(400).json({ error: "jobId and key required" });
   }
@@ -137,6 +143,8 @@ app.post("/process-upload", (req, res) => {
         style: style || "Educational",
         platforms:
           Array.isArray(platforms) && platforms.length ? platforms : ["TikTok"],
+        clipLength,
+        topic,
       });
 
       const inserted = await insertClips(jobId, metas.slice(0, n));

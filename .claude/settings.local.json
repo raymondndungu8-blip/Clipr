@@ -42,7 +42,8 @@
       "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\).on\\('end',\\(\\)=>{try{const b=JSON.parse\\(d\\);console.log\\('uploads limit=',b.file_size_limit\\)}catch\\(e\\){console.log\\(d.slice\\(0,150\\)\\)}}\\)\")",
       "Bash(curl -s --max-time 50 \"https://clipr-rn-render.fly.dev/health\")",
       "Bash(curl -s --max-time 60 \"https://clipr-rn-render.fly.dev/health\")",
-      "Bash(curl -s -I -H \"Origin: https://clipr-lyart.vercel.app\" \"https://uimdgvesfbvaezlfsmrs.supabase.co/storage/v1/object/public/clips/test/captioncheck.mp4\")"
+      "Bash(curl -s -I -H \"Origin: https://clipr-lyart.vercel.app\" \"https://uimdgvesfbvaezlfsmrs.supabase.co/storage/v1/object/public/clips/test/captioncheck.mp4\")",
+      "WebFetch(domain:www.opus.pro)"
     ]
   }
 }

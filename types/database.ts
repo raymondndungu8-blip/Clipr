@@ -86,6 +86,9 @@ export interface Database {
           end_seconds: number | null;
           r2_url: string | null;
           bg_gradient: string | null;
+          virality_score: number | null;
+          score_reason: string | null;
+          virality_tag: string | null;
           created_at: string | null;
         };
         Insert: {
@@ -101,6 +104,9 @@ export interface Database {
           end_seconds?: number | null;
           r2_url?: string | null;
           bg_gradient?: string | null;
+          virality_score?: number | null;
+          score_reason?: string | null;
+          virality_tag?: string | null;
           created_at?: string | null;
         };
         Update: {
@@ -116,6 +122,9 @@ export interface Database {
           end_seconds?: number | null;
           r2_url?: string | null;
           bg_gradient?: string | null;
+          virality_score?: number | null;
+          score_reason?: string | null;
+          virality_tag?: string | null;
           created_at?: string | null;
         };
         Relationships: [

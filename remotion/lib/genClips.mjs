@@ -24,35 +24,54 @@ function condense(segments, maxChars = 24000) {
   return lines.join("\n");
 }
 
+function lengthGuide(preset) {
+  switch (preset) {
+    case "<30s":
+      return "Each clip MUST be 15-30 seconds.";
+    case "30-60s":
+      return "Each clip MUST be 30-60 seconds.";
+    case "60-90s":
+      return "Each clip MUST be 60-90 seconds.";
+    default:
+      return "Each clip should be 20-60 seconds — whatever best captures a complete, self-contained moment.";
+  }
+}
+
 /**
- * @param {{segments:{start:number,end:number,text:string}[], count:number, style:string, platforms:string[]}} opts
+ * @param {{segments:{start:number,end:number,text:string}[], count:number, style:string, platforms:string[], clipLength?:string, topic?:string|null}} opts
  */
 export async function generateClipsFromTranscript(opts) {
   const key = process.env.NVIDIA_API_KEY || process.env.LLM_API_KEY;
   if (!key) throw new Error("NVIDIA_API_KEY not configured on the worker");
-  const { segments, count, style, platforms } = opts;
+  const { segments, count, style, platforms, clipLength, topic } = opts;
   const transcript = condense(segments);
+  const focus = topic
+    ? `\nThe creator wants clips about: "${topic}". Prioritise matching moments.`
+    : "";
 
-  const prompt = `You turn a real video transcript into ${count} viral short-form clip${count === 1 ? "" : "s"}.
-Style: ${style}. Target platforms: ${platforms.join(", ")}.
+  const prompt = `You analyse a real video transcript (visual/audio/sentiment cues) and select the ${count} BEST viral short-form clip${count === 1 ? "" : "s"} — the moments most likely to go viral.
+Style: ${style}. Target platforms: ${platforms.join(", ")}. ${lengthGuide(clipLength)}${focus}
 
 Here is the ACTUAL transcript (each line is "[startSecond] spoken text"):
 """
 ${transcript}
 """
 
-Pick the ${count} most compelling moments that ACTUALLY occur in the transcript. Return a JSON array of exactly ${count} objects, each with:
-- "title": punchy clip title (under 60 chars) from the clip's real content
+Choose the ${count} most viral, self-contained moments that ACTUALLY occur — each needs a strong hook in its first seconds AND a satisfying payoff (not a random slice). Return a JSON array of exactly ${count} objects, each with:
+- "title": punchy title (under 60 chars) from the clip's real content
 - "hook": scroll-stopping line drawn from what's actually said
 - "description": 1 short post description
-- "captions": array of exactly 5 short caption chunks, 2-4 words each, ALL UPPERCASE, taken from words actually spoken in the clip
+- "captions": array of exactly 5 chunks, 2-4 words, ALL UPPERCASE, from words actually spoken in the clip
 - "hashtags": array of exactly 5 relevant hashtags (with #)
-- "duration": clip length as "0:NN" between 15 and 60 seconds
-- "startSeconds": integer start time from the transcript timestamps
-- "endSeconds": integer end time; endSeconds-startSeconds equals the duration
+- "duration": "0:NN" matching the length rule above
+- "startSeconds": integer start time (real transcript timestamp)
+- "endSeconds": integer end; endSeconds-startSeconds equals the duration
 - "bgGradient": a dark CSS linear-gradient string suited to the mood
+- "viralityScore": integer 0-100 predicting viral potential (honest and differentiated)
+- "viralityTag": 1-3 word reason (e.g. "Strong Hook", "Emotional", "Surprising")
+- "scoreReason": one short sentence on why it scored that
 
-Return ONLY the JSON array. No markdown, no commentary.`;
+Return ONLY a JSON array of exactly ${count} objects, sorted by viralityScore descending. No markdown, no commentary.`;
 
   const res = await fetch(`${BASE}/chat/completions`, {
     method: "POST",

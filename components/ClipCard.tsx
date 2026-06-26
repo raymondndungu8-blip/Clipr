@@ -102,9 +102,19 @@ export default function ClipCard({
     }
   }
 
+  const score = clip.virality_score;
+  const scoreColor =
+    typeof score !== "number"
+      ? "#7A756E"
+      : score >= 80
+        ? "#22e06a"
+        : score >= 60
+          ? "#C9A84C"
+          : "#7A756E";
+
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-clipr-card neo-raised p-4">
-      <div className="flex justify-center">
+      <div className="relative flex justify-center">
         <VideoPreview
           hook={clip.hook ?? undefined}
           captions={captions}
@@ -114,6 +124,21 @@ export default function ClipCard({
           youtubeId={youtubeId}
           accent={accent}
         />
+        {typeof score === "number" && (
+          <div
+            className="absolute right-3 top-3 flex items-center gap-1 rounded-full px-2.5 py-1 backdrop-blur-sm"
+            style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
+            title={clip.score_reason ?? "Virality score"}
+          >
+            <span style={{ fontSize: 11 }}>🔥</span>
+            <span
+              className="font-mono font-bold"
+              style={{ fontSize: 13, color: scoreColor }}
+            >
+              {score}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">
@@ -121,6 +146,21 @@ export default function ClipCard({
           <h3 className="text-base font-semibold leading-snug text-clipr-text">
             {clip.title}
           </h3>
+        )}
+        {(clip.virality_tag || clip.score_reason) && (
+          <div className="flex flex-col gap-1">
+            {clip.virality_tag && (
+              <span
+                className="w-fit rounded-full px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide"
+                style={{ backgroundColor: `${scoreColor}22`, color: scoreColor }}
+              >
+                {clip.virality_tag}
+              </span>
+            )}
+            {clip.score_reason && (
+              <p className="text-xs text-clipr-dim">{clip.score_reason}</p>
+            )}
+          </div>
         )}
         {description && (
           <p className="line-clamp-3 text-sm text-clipr-secondary">

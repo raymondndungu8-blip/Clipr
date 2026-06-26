@@ -45,6 +45,8 @@ export const ClipInputSchema = z
       .string()
       .regex(/^#[0-9a-fA-F]{6}$/)
       .optional(),
+    /** Target clip length preset (Opus-style). */
+    clipLength: z.enum(["auto", "<30s", "30-60s", "60-90s"]).optional(),
   })
   .refine((data) => Boolean(data.url || data.topic || data.uploadKey), {
     message: "Provide a video URL, a topic, or an uploaded video.",

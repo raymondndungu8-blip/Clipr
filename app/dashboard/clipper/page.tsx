@@ -60,6 +60,9 @@ export default function ClipperPage() {
   const [count, setCount] = useState(3);
   const [captionStyle, setCaptionStyle] =
     useState<CaptionStyleName>(DEFAULT_CAPTION_STYLE);
+  const [clipLength, setClipLength] = useState<
+    "auto" | "<30s" | "30-60s" | "60-90s"
+  >("auto");
 
   const [loading, setLoading] = useState(false);
   const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
@@ -98,6 +101,7 @@ export default function ClipperPage() {
       .from("clips")
       .select("*")
       .eq("job_id", jobId)
+      .order("virality_score", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: true });
     setClips(data ?? []);
   }
@@ -170,10 +174,12 @@ export default function ClipperPage() {
           "/api/clip",
           {
             uploadKey: path,
+            topic: topic.trim() || undefined,
             style,
             platforms,
             count,
             accent: accentForStyle(captionStyle),
+            clipLength,
           }
         );
         setJobStatus("processing");
@@ -188,6 +194,7 @@ export default function ClipperPage() {
         platforms,
         count,
         accent: accentForStyle(captionStyle),
+        clipLength,
       });
       // URL/topic clips are created synchronously — load them right away.
       await loadClips(jobId);
@@ -248,13 +255,13 @@ export default function ClipperPage() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="topic">Topic</Label>
+            <Label htmlFor="topic">What to clip (optional)</Label>
             <Input
               id="topic"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
               className="bg-clipr-surface"
-              placeholder="e.g. AI tools for creators"
+              placeholder="e.g. the funniest moments, or the part about pricing"
               aria-invalid={!!fieldErrors.topic}
             />
             {fieldErrors.topic && (
@@ -349,6 +356,35 @@ export default function ClipperPage() {
             <p className="text-xs text-clipr-dim">
               Number of shorts/reels to generate from the video (up to 20).
             </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label>Clip length</Label>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["auto", "Auto"],
+                  ["<30s", "<30s"],
+                  ["30-60s", "30–60s"],
+                  ["60-90s", "60–90s"],
+                ] as const
+              ).map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setClipLength(val)}
+                  aria-pressed={clipLength === val}
+                  className={cn(
+                    "rounded-full px-4 py-1.5 text-sm font-medium transition-all active:scale-95",
+                    clipLength === val
+                      ? "neo-inset text-clipr-gold"
+                      : "bg-clipr-card neo-raised-sm text-clipr-secondary hover:text-clipr-text"
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">
