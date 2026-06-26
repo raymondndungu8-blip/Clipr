@@ -41,7 +41,8 @@
       "Bash(curl -s -A clipr-admin/1.0 https://uimdgvesfbvaezlfsmrs.supabase.co/storage/v1/bucket/uploads -H 'apikey: sb_secret_cmjnTvCTea315TNpfkwyBw_e1ZjK9et' -H 'Authorization: Bearer sb_secret_cmjnTvCTea315TNpfkwyBw_e1ZjK9et')",
       "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\).on\\('end',\\(\\)=>{try{const b=JSON.parse\\(d\\);console.log\\('uploads limit=',b.file_size_limit\\)}catch\\(e\\){console.log\\(d.slice\\(0,150\\)\\)}}\\)\")",
       "Bash(curl -s --max-time 50 \"https://clipr-rn-render.fly.dev/health\")",
-      "Bash(curl -s --max-time 60 \"https://clipr-rn-render.fly.dev/health\")"
+      "Bash(curl -s --max-time 60 \"https://clipr-rn-render.fly.dev/health\")",
+      "Bash(curl -s -I -H \"Origin: https://clipr-lyart.vercel.app\" \"https://uimdgvesfbvaezlfsmrs.supabase.co/storage/v1/object/public/clips/test/captioncheck.mp4\")"
     ]
   }
 }

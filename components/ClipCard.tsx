@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import VideoPreview from "@/components/VideoPreview";
 import PostDialog from "@/components/PostDialog";
 import { apiPost, ApiError } from "@/components/lib/api";
+import { saveVideo } from "@/lib/download";
 
 type Clip = Tables<"clips">;
 
@@ -75,21 +76,8 @@ export default function ClipCard({
 
   async function downloadVideo() {
     if (!renderedUrl) return;
-    try {
-      const res = await fetch(renderedUrl);
-      const blob = await res.blob();
-      const href = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = href;
-      a.download = `clipr-${clip.id}.mp4`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(href);
-    } catch {
-      // Fallback: open the file in a new tab if the blob fetch is blocked.
-      window.open(renderedUrl, "_blank", "noopener,noreferrer");
-    }
+    const name = `${(clip.title || "clip").replace(/[^\w-]+/g, "-").slice(0, 40)}.mp4`;
+    await saveVideo(renderedUrl, name);
   }
 
   const hashtags = clip.hashtags ?? [];

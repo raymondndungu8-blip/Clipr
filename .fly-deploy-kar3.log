@@ -1,0 +1,132 @@
+==> Verifying app config
+--> Verified app config
+Validating C:\Users\HomePC\Clipr\remotion\fly.toml
+[32m✓[0m Configuration is valid
+==> Building image
+Waiting for depot builder...
+
+==> Building image with Depot
+--> build:  (​)
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile:
+#1 transferring dockerfile: 1.24kB 1.4s done
+#1 DONE 1.4s
+
+#2 [internal] load metadata for docker.io/library/node:20-bookworm-slim
+#2 DONE 0.2s
+
+#3 [internal] load .dockerignore
+#3 transferring context:
+#3 transferring context: 102B 1.4s done
+#3 DONE 1.4s
+
+#4 [1/8] FROM docker.io/library/node:20-bookworm-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0
+#4 resolve docker.io/library/node:20-bookworm-slim@sha256:2cf067cfed83d5ea958367df9f966191a942351a2df77d6f0193e162b5febfc0 done
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 7.39kB 2.8s done
+#5 DONE 2.8s
+
+#6 [2/8] RUN apt-get update && apt-get install -y --no-install-recommends       python3 python3-pip ca-certificates fonts-liberation fonts-dejavu-core       libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0       libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libpango-1.0-0       libcairo2 libasound2 libatspi2.0-0 libx11-6 libxcb1 libxext6 libxi6       libglib2.0-0     && pip3 install --break-system-packages --no-cache-dir yt-dlp youtube-transcript-api faster-whisper     && rm -rf /var/lib/apt/lists/*
+#6 CACHED
+
+#7 [3/8] RUN python3 -c "from faster_whisper import WhisperModel; WhisperModel('base', device='cpu', compute_type='int8')"
+#7 CACHED
+
+#8 [4/8] WORKDIR /app
+#8 CACHED
+
+#9 [5/8] COPY package*.json ./
+#9 CACHED
+
+#10 [6/8] RUN npm ci --omit=dev
+#10 CACHED
+
+#11 [7/8] COPY . .
+#11 DONE 0.0s
+
+#12 [8/8] RUN npx remotion browser ensure
+#12 2.347 Downloading Chrome Headless Shell https://www.remotion.dev/chrome-headless-shell
+#12 2.354 Downloading from: https://remotion.media/chromium-headless-shell-linux-x64-149.0.7790.0.zip?clear
+#12 2.772 Getting Headless Shell - 9.5 Mb/91.9 Mb
+#12 2.886 Getting Headless Shell - 19.1 Mb/91.9 Mb
+#12 2.960 Getting Headless Shell - 28.6 Mb/91.9 Mb
+#12 3.034 Getting Headless Shell - 38.2 Mb/91.9 Mb
+#12 3.087 Getting Headless Shell - 47.7 Mb/91.9 Mb
+#12 3.164 Getting Headless Shell - 57.3 Mb/91.9 Mb
+#12 3.244 Getting Headless Shell - 66.8 Mb/91.9 Mb
+#12 3.331 Getting Headless Shell - 76.4 Mb/91.9 Mb
+#12 3.416 Getting Headless Shell - 85.9 Mb/91.9 Mb
+#12 3.459 Got Headless Shell
+#12 5.460 Has browser at /app/node_modules/.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64/chrome-headless-shell
+#12 DONE 7.9s
+
+#13 exporting to image
+#13 exporting layers
+#13 exporting layers 12.4s done
+#13 exporting manifest sha256:e22e6e188a0a9c69c9b2c11d71f8ae5d1cf8272cf9c994f35d6798b083d14a5d done
+#13 exporting config sha256:b6b89c23a3f5e58c3af616fd48ffa943a4218237f14fe6b23db60d060b39181f done
+#13 pushing layers for registry.fly.io/clipr-rn-render:deployment-01KVQZYSDH8ZZRKP0K3XDPK3WH@sha256:e22e6e188a0a9c69c9b2c11d71f8ae5d1cf8272cf9c994f35d6798b083d14a5d
+#13 pushing layer sha256:b6b89c23a3f5e58c3af616fd48ffa943a4218237f14fe6b23db60d060b39181f
+#13 pushing layer sha256:e489c383e4e5a1e43471d765ba66578da5c7e3aa84ae483b969830715198d0f0
+#13 pushing layer sha256:ea2b60f3338f30537bdab1ed54994203d1ead1c8d5eccddf4c765a4de72de66f
+#13 pushing layer sha256:a14332b0558d11d7edc555db9fcb164fa6e3d8f8ef1f37e61d2f382817eb1d2e
+#13 pushing layer sha256:cafbacc3deae17253644d092525dcad7ce789fc6260a5d953d273549e118b0c6
+#13 pushing layer sha256:62f85b5ca1fbeacb704b4a7b1ac10a959186fcba76a6a787d47d0efa6bb2255f
+#13 pushing layer sha256:7b1e6c7c924ae3f5c8b6b682c05531057bfeefc7c10051e962f56ca26731d86f
+#13 pushing layer sha256:12d475d252997f09f9ee1777835a1058b7e890ea8cec030c729396ea27c4c8ff
+#13 pushing layer sha256:56b929f516b8989b818f27cb6306a665ffcd35c8d45d1a2e6019f94217717fdd
+#13 pushing layer sha256:7b04df337afd438e549d74e54ff1ea5acd712efed846405ea057440554bdf9a9
+#13 pushing layer sha256:d702019ad3dc55d03e38cc543bfdb0ca9e3e7ac735e03a755c852c6745c2d8d6
+#13 pushing layer sha256:cfe42610999d219e11903496ae408c99612b16b265e8ca98ea743eb40400cdef
+#13 pushing layer sha256:a9da4b9029b36eb69dde3e65a30a1c81066c5745ee924422b9fbab5bd21e916d
+#13 pushing layer sha256:cafbacc3deae17253644d092525dcad7ce789fc6260a5d953d273549e118b0c6 0.9s done
+#13 pushing layer sha256:cfe42610999d219e11903496ae408c99612b16b265e8ca98ea743eb40400cdef 1.3s done
+#13 pushing layer sha256:56b929f516b8989b818f27cb6306a665ffcd35c8d45d1a2e6019f94217717fdd 5.8s done
+#13 pushing layer sha256:b6b89c23a3f5e58c3af616fd48ffa943a4218237f14fe6b23db60d060b39181f 6.0s done
+#13 pushing layer sha256:ea2b60f3338f30537bdab1ed54994203d1ead1c8d5eccddf4c765a4de72de66f 5.9s done
+#13 pushing layer sha256:62f85b5ca1fbeacb704b4a7b1ac10a959186fcba76a6a787d47d0efa6bb2255f 5.9s done
+#13 pushing layer sha256:7b1e6c7c924ae3f5c8b6b682c05531057bfeefc7c10051e962f56ca26731d86f 5.9s done
+#13 pushing layer sha256:12d475d252997f09f9ee1777835a1058b7e890ea8cec030c729396ea27c4c8ff 5.9s done
+#13 pushing layer sha256:7b04df337afd438e549d74e54ff1ea5acd712efed846405ea057440554bdf9a9 5.9s done
+#13 pushing layer sha256:d702019ad3dc55d03e38cc543bfdb0ca9e3e7ac735e03a755c852c6745c2d8d6 5.9s done
+#13 pushing layer sha256:a9da4b9029b36eb69dde3e65a30a1c81066c5745ee924422b9fbab5bd21e916d 5.9s done
+#13 pushing layer sha256:a14332b0558d11d7edc555db9fcb164fa6e3d8f8ef1f37e61d2f382817eb1d2e 6.0s done
+#13 pushing layers for registry.fly.io/clipr-rn-render:deployment-01KVQZYSDH8ZZRKP0K3XDPK3WH@sha256:e22e6e188a0a9c69c9b2c11d71f8ae5d1cf8272cf9c994f35d6798b083d14a5d 6.9s done
+#13 pushing layer sha256:e489c383e4e5a1e43471d765ba66578da5c7e3aa84ae483b969830715198d0f0 6.9s done
+#13 pushing manifest for registry.fly.io/clipr-rn-render:deployment-01KVQZYSDH8ZZRKP0K3XDPK3WH@sha256:e22e6e188a0a9c69c9b2c11d71f8ae5d1cf8272cf9c994f35d6798b083d14a5d 0.1s done
+#13 DONE 19.5s
+--> Build Summary:  (​)
+--> Building image done
+
+Watch your deployment at https://fly.io/apps/clipr-rn-render/monitoring
+
+image: registry.fly.io/clipr-rn-render:deployment-01KVQZYSDH8ZZRKP0K3XDPK3WH
+image size: 898 MB
+Updating existing machines in 'clipr-rn-render' with rolling strategy
+> [1/2] Acquiring lease for 080e357ce21258
+> [1/2] Acquired lease for 080e357ce21258
+> [2/2] Acquiring lease for 08016e4be17408
+> [2/2] Acquired lease for 08016e4be17408
+> [2/2] Updating machine config for 08016e4be17408
+> [1/2] Updating machine config for 080e357ce21258
+> [1/2] Updating 080e357ce21258 [app]
+> [2/2] Updating 08016e4be17408 [app]
+> [2/2] Updated machine config for 08016e4be17408
+> [2/2] Waiting for machine 08016e4be17408 to reach a good state
+> [1/2] Updated machine config for 080e357ce21258
+> [1/2] Waiting for machine 080e357ce21258 to reach a good state
+> [1/2] Machine 080e357ce21258 reached stopped state
+> [2/2] Machine 08016e4be17408 reached stopped state
+✔ [2/2] Machine 08016e4be17408 is now in a good state
+✔ [1/2] Machine 080e357ce21258 is now in a good state
+> [2/2] Clearing lease for 08016e4be17408
+> [1/2] Clearing lease for 080e357ce21258
+✔ [1/2] Cleared lease for 080e357ce21258
+✔ [2/2] Cleared lease for 08016e4be17408
+Checking DNS configuration for clipr-rn-render.fly.dev
+✓ DNS configuration verified
+
+Visit your newly deployed app at https://clipr-rn-render.fly.dev/
+

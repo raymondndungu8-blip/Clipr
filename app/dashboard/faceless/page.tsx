@@ -31,6 +31,7 @@ import RateLimitBanner from "@/components/RateLimitBanner";
 import PostDialog from "@/components/PostDialog";
 import { PageTransition, FadeIn, ScaleIn, motion } from "@/components/motion";
 import { apiPost, ApiError } from "@/components/lib/api";
+import { saveVideo } from "@/lib/download";
 
 const NICHES = [
   "Tech & AI",
@@ -139,20 +140,8 @@ export default function FacelessPage() {
 
   async function downloadVideo() {
     if (!renderedUrl) return;
-    try {
-      const res = await fetch(renderedUrl);
-      const blob = await res.blob();
-      const href = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = href;
-      a.download = `clipr-faceless-${videoId}.mp4`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(href);
-    } catch {
-      window.open(renderedUrl, "_blank", "noopener,noreferrer");
-    }
+    const name = `${(script?.title || "faceless").replace(/[^\w-]+/g, "-").slice(0, 40)}.mp4`;
+    await saveVideo(renderedUrl, name);
   }
 
   function togglePlatform(p: Platform) {
