@@ -60,3 +60,76 @@ Waiting for depot builder...
 #12 5.973 Getting Headless Shell - 57.3 Mb/91.9 Mb
 #12 6.036 Getting Headless Shell - 66.8 Mb/91.9 Mb
 #12 6.115 Getting Headless Shell - 76.3 Mb/91.9 Mb
+#12 6.215 Getting Headless Shell - 85.9 Mb/91.9 Mb
+#12 6.258 Got Headless Shell
+#12 8.656 Has browser at /app/node_modules/.remotion/chrome-headless-shell/linux64/chrome-headless-shell-linux64/chrome-headless-shell
+#12 DONE 10.5s
+
+#13 exporting to image
+#13 exporting layers
+#13 exporting layers 11.6s done
+#13 exporting manifest sha256:d569c7145dfb8c828323164c50cf7fea8ec0ebc8ad2bc1202e89c1cac66a643c done
+#13 exporting config sha256:5bd2be888d977c9043f4dc729255ef2591b4cf9f7796c62a383ad235c6ea731f done
+#13 pushing layers for registry.fly.io/clipr-rn-render:deployment-01KW2JR3VCQ811B7ZYFW42M3S5@sha256:d569c7145dfb8c828323164c50cf7fea8ec0ebc8ad2bc1202e89c1cac66a643c
+#13 pushing layer sha256:5bd2be888d977c9043f4dc729255ef2591b4cf9f7796c62a383ad235c6ea731f
+#13 pushing layer sha256:4d63fff8741e5f9c1159246b22a20aee552fd5076c92cc9e9f02037b021c0c16
+#13 pushing layer sha256:7b1e6c7c924ae3f5c8b6b682c05531057bfeefc7c10051e962f56ca26731d86f
+#13 pushing layer sha256:a9da4b9029b36eb69dde3e65a30a1c81066c5745ee924422b9fbab5bd21e916d
+#13 pushing layer sha256:62f85b5ca1fbeacb704b4a7b1ac10a959186fcba76a6a787d47d0efa6bb2255f
+#13 pushing layer sha256:7b04df337afd438e549d74e54ff1ea5acd712efed846405ea057440554bdf9a9
+#13 pushing layer sha256:cafbacc3deae17253644d092525dcad7ce789fc6260a5d953d273549e118b0c6
+#13 pushing layer sha256:9c09838f2fc7b381a5f133506a868a1b8ee3833adb69cb1a8e9baf1b7c5008dd
+#13 pushing layer sha256:d702019ad3dc55d03e38cc543bfdb0ca9e3e7ac735e03a755c852c6745c2d8d6
+#13 pushing layer sha256:12d475d252997f09f9ee1777835a1058b7e890ea8cec030c729396ea27c4c8ff
+#13 pushing layer sha256:ea2b60f3338f30537bdab1ed54994203d1ead1c8d5eccddf4c765a4de72de66f
+#13 pushing layer sha256:cfe42610999d219e11903496ae408c99612b16b265e8ca98ea743eb40400cdef
+#13 pushing layer sha256:56b929f516b8989b818f27cb6306a665ffcd35c8d45d1a2e6019f94217717fdd
+#13 pushing layer sha256:a9da4b9029b36eb69dde3e65a30a1c81066c5745ee924422b9fbab5bd21e916d 0.3s done
+#13 pushing layer sha256:62f85b5ca1fbeacb704b4a7b1ac10a959186fcba76a6a787d47d0efa6bb2255f 0.6s done
+#13 pushing layer sha256:ea2b60f3338f30537bdab1ed54994203d1ead1c8d5eccddf4c765a4de72de66f 0.9s done
+#13 pushing layer sha256:cfe42610999d219e11903496ae408c99612b16b265e8ca98ea743eb40400cdef 1.2s done
+#13 pushing layer sha256:cafbacc3deae17253644d092525dcad7ce789fc6260a5d953d273549e118b0c6 1.5s done
+#13 pushing layer sha256:7b1e6c7c924ae3f5c8b6b682c05531057bfeefc7c10051e962f56ca26731d86f 2.1s done
+#13 pushing layer sha256:7b04df337afd438e549d74e54ff1ea5acd712efed846405ea057440554bdf9a9 2.4s done
+#13 pushing layer sha256:56b929f516b8989b818f27cb6306a665ffcd35c8d45d1a2e6019f94217717fdd 2.7s done
+#13 pushing layer sha256:d702019ad3dc55d03e38cc543bfdb0ca9e3e7ac735e03a755c852c6745c2d8d6 3.6s done
+#13 pushing layer sha256:12d475d252997f09f9ee1777835a1058b7e890ea8cec030c729396ea27c4c8ff 3.9s done
+#13 pushing layer sha256:5bd2be888d977c9043f4dc729255ef2591b4cf9f7796c62a383ad235c6ea731f 3.9s done
+#13 pushing layer sha256:9c09838f2fc7b381a5f133506a868a1b8ee3833adb69cb1a8e9baf1b7c5008dd 3.9s done
+#13 pushing layers for registry.fly.io/clipr-rn-render:deployment-01KW2JR3VCQ811B7ZYFW42M3S5@sha256:d569c7145dfb8c828323164c50cf7fea8ec0ebc8ad2bc1202e89c1cac66a643c 5.0s done
+#13 pushing layer sha256:4d63fff8741e5f9c1159246b22a20aee552fd5076c92cc9e9f02037b021c0c16 5.0s done
+#13 pushing manifest for registry.fly.io/clipr-rn-render:deployment-01KW2JR3VCQ811B7ZYFW42M3S5@sha256:d569c7145dfb8c828323164c50cf7fea8ec0ebc8ad2bc1202e89c1cac66a643c 0.1s done
+#13 DONE 16.8s
+--> Build Summary:  (​)
+--> Building image done
+image: registry.fly.io/clipr-rn-render:deployment-01KW2JR3VCQ811B7ZYFW42M3S5
+
+Watch your deployment at https://fly.io/apps/clipr-rn-render/monitoring
+
+image size: 898 MB
+Updating existing machines in 'clipr-rn-render' with rolling strategy
+> [1/2] Acquiring lease for 08016e4be17408
+> [1/2] Acquired lease for 08016e4be17408
+> [2/2] Acquiring lease for 080e357ce21258
+> [2/2] Acquired lease for 080e357ce21258
+> [2/2] Updating machine config for 080e357ce21258
+> [1/2] Updating machine config for 08016e4be17408
+> [1/2] Updating 08016e4be17408 [app]
+> [2/2] Updating 080e357ce21258 [app]
+> [1/2] Updated machine config for 08016e4be17408
+> [1/2] Waiting for machine 08016e4be17408 to reach a good state
+> [2/2] Updated machine config for 080e357ce21258
+> [2/2] Waiting for machine 080e357ce21258 to reach a good state
+> [1/2] Machine 08016e4be17408 reached stopped state
+✔ [1/2] Machine 08016e4be17408 is now in a good state
+> [2/2] Machine 080e357ce21258 reached stopped state
+✔ [2/2] Machine 080e357ce21258 is now in a good state
+> [2/2] Clearing lease for 080e357ce21258
+> [1/2] Clearing lease for 08016e4be17408
+✔ [2/2] Cleared lease for 080e357ce21258
+✔ [1/2] Cleared lease for 08016e4be17408
+Checking DNS configuration for clipr-rn-render.fly.dev
+✓ DNS configuration verified
+
+Visit your newly deployed app at https://clipr-rn-render.fly.dev/
+

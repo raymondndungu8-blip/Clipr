@@ -332,6 +332,7 @@ export default function FacelessPage() {
                     duration={duration}
                     bgGradient={script.bgGradient}
                     videoUrl={renderedUrl}
+                    onPlayClick={rendering ? undefined : renderVideo}
                   />
                 </ScaleIn>
                 <div className="flex flex-col gap-3">

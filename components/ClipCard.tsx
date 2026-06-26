@@ -123,6 +123,7 @@ export default function ClipCard({
           videoUrl={renderedUrl}
           youtubeId={youtubeId}
           accent={accent}
+          onPlayClick={rendering ? undefined : renderVideo}
         />
         {typeof score === "number" && (
           <div

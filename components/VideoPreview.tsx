@@ -54,6 +54,8 @@ type VideoPreviewProps = {
   captionStyle?: CaptionStyle;
   /** Force a specific caption index (disables cycling). */
   activeIndex?: number;
+  /** Tapping the play button (e.g. to render then play the clip). */
+  onPlayClick?: () => void;
   className?: string;
 };
 
@@ -69,6 +71,7 @@ export default function VideoPreview({
   accent,
   captionStyle,
   activeIndex,
+  onPlayClick,
   className,
 }: VideoPreviewProps) {
   const effectiveAccent =
@@ -167,15 +170,16 @@ export default function VideoPreview({
       >
         <div className="absolute inset-1.5 overflow-hidden rounded-lg">
           {videoUrl ? (
-            <>
-              <video
-                src={videoUrl}
-                controls
-                playsInline
-                className="absolute inset-0 h-full w-full bg-black object-cover"
-              />
-              {overlay}
-            </>
+            // Rendered clip — autoplays muted (tap the volume to hear it).
+            <video
+              src={videoUrl}
+              controls
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="absolute inset-0 h-full w-full bg-black object-cover"
+            />
           ) : showThumb ? (
             <>
               {/* real video frame — static thumbnail, no YouTube player/watermark */}
@@ -187,6 +191,28 @@ export default function VideoPreview({
                 className="absolute inset-0 h-full w-full bg-black object-cover"
               />
               {overlay}
+              <button
+                type="button"
+                onClick={onPlayClick}
+                aria-label="Play clip"
+                className="absolute inset-0 flex items-center justify-center"
+              >
+                <span
+                  className="flex items-center justify-center rounded-full transition-transform active:scale-90"
+                  style={{
+                    width: 56,
+                    height: 56,
+                    backgroundColor: "var(--clipr-gold)",
+                    boxShadow: "0 0 28px 6px rgba(61,123,255,0.55)",
+                  }}
+                >
+                  <Play
+                    fill="#0A0A0A"
+                    stroke="#0A0A0A"
+                    style={{ width: 22, height: 22, marginLeft: 3 }}
+                  />
+                </span>
+              </button>
             </>
           ) : (
             <>
@@ -195,24 +221,29 @@ export default function VideoPreview({
                 style={{ background: bgGradient || DEFAULT_GRADIENT }}
               />
               <div className="clipr-scanlines absolute inset-0" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div
-                  className="flex items-center justify-center rounded-full"
+              {overlay}
+              <button
+                type="button"
+                onClick={onPlayClick}
+                aria-label="Play clip"
+                className="absolute inset-0 flex items-center justify-center"
+              >
+                <span
+                  className="flex items-center justify-center rounded-full transition-transform active:scale-90"
                   style={{
-                    width: 34,
-                    height: 34,
+                    width: 56,
+                    height: 56,
                     backgroundColor: "var(--clipr-gold)",
-                    boxShadow: "0 0 24px 4px rgba(61,123,255,0.5)",
+                    boxShadow: "0 0 28px 6px rgba(61,123,255,0.55)",
                   }}
                 >
                   <Play
-                    fill="#FFFFFF"
-                    stroke="#FFFFFF"
-                    style={{ width: 14, height: 14, marginLeft: 2 }}
+                    fill="#0A0A0A"
+                    stroke="#0A0A0A"
+                    style={{ width: 22, height: 22, marginLeft: 3 }}
                   />
-                </div>
-              </div>
-              {overlay}
+                </span>
+              </button>
             </>
           )}
         </div>
