@@ -246,6 +246,12 @@ export default function ClipperPage() {
             {fieldErrors.url && (
               <p className="text-xs text-clipr-error">{fieldErrors.url[0]}</p>
             )}
+            <p className="text-xs text-clipr-dim">
+              Note: YouTube clips render as silent caption videos (YouTube blocks
+              server downloads). For clips that{" "}
+              <span className="text-clipr-secondary">play with real footage and sound</span>,
+              upload the video below.
+            </p>
           </div>
 
           <div className="flex items-center gap-3">
