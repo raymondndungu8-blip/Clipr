@@ -46,6 +46,7 @@ export interface Database {
           platforms: string[] | null;
           status: "pending" | "processing" | "done" | "failed";
           error_message: string | null;
+          progress: number;
           created_at: string | null;
         };
         Insert: {
@@ -57,6 +58,7 @@ export interface Database {
           platforms?: string[] | null;
           status?: "pending" | "processing" | "done" | "failed";
           error_message?: string | null;
+          progress?: number;
           created_at?: string | null;
         };
         Update: {
@@ -68,6 +70,7 @@ export interface Database {
           platforms?: string[] | null;
           status?: "pending" | "processing" | "done" | "failed";
           error_message?: string | null;
+          progress?: number;
           created_at?: string | null;
         };
         Relationships: [];

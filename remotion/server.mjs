@@ -84,7 +84,7 @@ async function insertClips(jobId, metas) {
   return await res.json();
 }
 
-async function setJobStatus(jobId, status, errorMessage) {
+async function patchJob(jobId, fields) {
   await fetch(`${SUPA}/rest/v1/clip_jobs?id=eq.${jobId}`, {
     method: "PATCH",
     headers: {
@@ -93,8 +93,20 @@ async function setJobStatus(jobId, status, errorMessage) {
       "Content-Type": "application/json",
       Prefer: "return=minimal",
     },
-    body: JSON.stringify({ status, error_message: errorMessage ?? null }),
+    body: JSON.stringify(fields),
   });
+}
+
+async function setJobStatus(jobId, status, errorMessage) {
+  await patchJob(jobId, {
+    status,
+    error_message: errorMessage ?? null,
+    ...(status === "done" ? { progress: 100 } : {}),
+  });
+}
+
+async function setJobProgress(jobId, progress) {
+  await patchJob(jobId, { progress: Math.max(0, Math.min(99, Math.round(progress))) });
 }
 
 const app = express();
@@ -129,13 +141,16 @@ app.post("/process-upload", (req, res) => {
     const localPath = path.join(SOURCES_DIR, localName);
     const n = Math.min(Math.max(1, Number(count) || 3), 20);
     try {
+      await setJobProgress(jobId, 5);
       await mkdir(SOURCES_DIR, { recursive: true });
       await downloadUpload(key, localPath);
+      await setJobProgress(jobId, 12);
 
       const tr = transcribeFile(localPath);
       if (!tr.ok || !tr.segments?.length) {
         throw new Error("transcription failed: " + (tr.error || "no speech detected"));
       }
+      await setJobProgress(jobId, 38);
 
       const metas = await generateClipsFromTranscript({
         segments: tr.segments,
@@ -146,9 +161,11 @@ app.post("/process-upload", (req, res) => {
         clipLength,
         topic,
       });
+      await setJobProgress(jobId, 48);
 
       const inserted = await insertClips(jobId, metas.slice(0, n));
       const signedUrl = await signUploadUrl(key);
+      await setJobProgress(jobId, 52);
 
       for (let i = 0; i < inserted.length; i++) {
         const row = inserted[i];
@@ -174,6 +191,10 @@ app.post("/process-upload", (req, res) => {
             e?.message || e
           );
         }
+        await setJobProgress(
+          jobId,
+          52 + Math.round(((i + 1) / inserted.length) * 43)
+        );
       }
 
       await setJobStatus(jobId, "done");

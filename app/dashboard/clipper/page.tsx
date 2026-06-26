@@ -10,9 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import PlatformPill, { PLATFORMS, type Platform } from "@/components/PlatformPill";
-import ProgressSteps from "@/components/ProgressSteps";
 import ClipCard from "@/components/ClipCard";
-import ClipCardSkeleton from "@/components/ClipCardSkeleton";
 import ConnectionGate from "@/components/ConnectionGate";
 import EmptyState from "@/components/EmptyState";
 import RateLimitBanner from "@/components/RateLimitBanner";
@@ -32,7 +30,16 @@ import {
 } from "@/lib/captionStyles";
 
 type Clip = Tables<"clips">;
-type JobStatus = "pending" | "processing" | "done" | "failed";
+
+/** Human label for a 0-100 progress value, matching the worker's stages. */
+function stageLabel(p: number): string {
+  if (p < 12) return "Preparing your video…";
+  if (p < 38) return "Transcribing the audio…";
+  if (p < 48) return "Finding the most viral moments…";
+  if (p < 52) return "Writing captions, titles & scores…";
+  if (p < 100) return "Rendering clips with captions…";
+  return "Finishing up…";
+}
 
 const STYLES = [
   "Educational",
@@ -41,14 +48,6 @@ const STYLES = [
   "Comedy",
   "News",
 ] as const;
-
-const STEPS = [
-  "Queued",
-  "Fetching source",
-  "Transcribing",
-  "Finding moments",
-  "Rendering clips",
-];
 
 export default function ClipperPage() {
   const [url, setUrl] = useState("");
@@ -65,7 +64,8 @@ export default function ClipperPage() {
   >("auto");
 
   const [loading, setLoading] = useState(false);
-  const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
+  const [progress, setProgress] = useState(0);
+  const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const [clips, setClips] = useState<Clip[]>([]);
   const [clipSourceUrl, setClipSourceUrl] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldIssues>({});
@@ -83,17 +83,6 @@ export default function ClipperPage() {
     );
   }
 
-  // map status → current step index
-  const stepIndex =
-    jobStatus === "pending"
-      ? 0
-      : jobStatus === "processing"
-        ? 3
-        : jobStatus === "done"
-          ? STEPS.length
-          : jobStatus === "failed"
-            ? 3
-            : 0;
 
   async function loadClips(jobId: string) {
     const supabase = getSupabase();
@@ -112,25 +101,26 @@ export default function ClipperPage() {
     const supabase = getSupabase();
     const deadline = Date.now() + 15 * 60 * 1000;
     while (Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 5000));
+      await new Promise((r) => setTimeout(r, 2500));
       const { data } = await supabase
         .from("clip_jobs")
-        .select("status, error_message")
+        .select("status, error_message, progress")
         .eq("id", jobId)
         .single();
+      if (typeof data?.progress === "number") {
+        setProgress((p) => Math.max(p, data.progress));
+      }
       if (data?.status === "done") {
+        setProgress(100);
         await loadClips(jobId);
-        setJobStatus("done");
         setLoading(false);
         return;
       }
       if (data?.status === "failed") {
         toast.error(data.error_message ?? "Processing failed. Please try again.");
-        setJobStatus("failed");
         setLoading(false);
         return;
       }
-      setJobStatus("processing");
     }
     toast.error("Still processing — check back in a moment.");
     setLoading(false);
@@ -147,15 +137,16 @@ export default function ClipperPage() {
     }
 
     setLoading(true);
+    setProgress(0);
     setFieldErrors({});
     setRateLimit(null);
     setClips([]);
     setClipSourceUrl(url.trim() || null);
-    setJobStatus("pending");
 
     try {
       if (file) {
         // 1. Signed upload URL → 2. upload straight to storage → 3. process.
+        setProgress(2);
         const ext = (file.name.split(".").pop() || "mp4").toLowerCase();
         const { path, token } = await apiPost<{ path: string; token: string }>(
           "/api/upload-url",
@@ -166,10 +157,10 @@ export default function ClipperPage() {
           .uploadToSignedUrl(path, token, file);
         if (upErr) {
           toast.error(`Upload failed: ${upErr.message}`);
-          setJobStatus(null);
           setLoading(false);
           return;
         }
+        setProgress(5);
         const resp = await apiPost<{ jobId: string; status?: string }>(
           "/api/clip",
           {
@@ -182,11 +173,16 @@ export default function ClipperPage() {
             clipLength,
           }
         );
-        setJobStatus("processing");
         await pollJob(resp.jobId);
         return;
       }
 
+      // URL/topic is fast + synchronous — animate the bar toward 90% meanwhile.
+      progressTimer.current = setInterval(() => {
+        setProgress((p) =>
+          p < 90 ? p + Math.max(1, Math.round((90 - p) * 0.12)) : p
+        );
+      }, 350);
       const { jobId } = await apiPost<{ jobId: string }>("/api/clip", {
         url: url.trim() || undefined,
         topic: topic.trim() || undefined,
@@ -196,12 +192,12 @@ export default function ClipperPage() {
         accent: accentForStyle(captionStyle),
         clipLength,
       });
-      // URL/topic clips are created synchronously — load them right away.
+      if (progressTimer.current) clearInterval(progressTimer.current);
+      setProgress(100);
       await loadClips(jobId);
-      setJobStatus("done");
       setLoading(false);
     } catch (err) {
-      setJobStatus(null);
+      if (progressTimer.current) clearInterval(progressTimer.current);
       setLoading(false);
       if (err instanceof ApiError) {
         if (err.status === 422) {
@@ -217,8 +213,6 @@ export default function ClipperPage() {
       }
     }
   }
-
-  const showProgress = loading || jobStatus === "failed";
 
   return (
     <PageTransition className="flex flex-col gap-6">
@@ -450,16 +444,6 @@ export default function ClipperPage() {
             />
           )}
 
-          {showProgress && (
-            <ScaleIn className="rounded-2xl bg-clipr-card neo-raised p-5">
-              <ProgressSteps
-                steps={STEPS}
-                current={stepIndex}
-                failed={jobStatus === "failed"}
-              />
-            </ScaleIn>
-          )}
-
           {clips.length > 0 ? (
             <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {clips.map((clip) => (
@@ -473,18 +457,59 @@ export default function ClipperPage() {
               ))}
             </Stagger>
           ) : loading ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {Array.from({ length: count }).map((_, i) => (
-                <ClipCardSkeleton key={i} label={`Clip ${i + 1} of ${count}`} />
-              ))}
-            </div>
+            <ScaleIn className="flex flex-col items-center gap-6 rounded-2xl bg-clipr-card neo-raised p-10 text-center">
+              <svg width="150" height="150" viewBox="0 0 150 150">
+                <circle
+                  cx="75"
+                  cy="75"
+                  r="62"
+                  fill="none"
+                  stroke="var(--clipr-border)"
+                  strokeWidth="10"
+                />
+                <circle
+                  cx="75"
+                  cy="75"
+                  r="62"
+                  fill="none"
+                  stroke="var(--clipr-gold)"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 62}
+                  strokeDashoffset={2 * Math.PI * 62 * (1 - progress / 100)}
+                  transform="rotate(-90 75 75)"
+                  style={{ transition: "stroke-dashoffset 0.6s ease" }}
+                />
+                <text
+                  x="75"
+                  y="75"
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  style={{
+                    fill: "var(--clipr-text)",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 32,
+                    fontWeight: 700,
+                  }}
+                >
+                  {progress}%
+                </text>
+              </svg>
+              <div>
+                <p className="text-base font-semibold text-clipr-text">
+                  {stageLabel(progress)}
+                </p>
+                <p className="mt-1 text-sm text-clipr-secondary">
+                  Crafting {count} perfect clip{count === 1 ? "" : "s"} —
+                  captions, scores and all.
+                </p>
+              </div>
+            </ScaleIn>
           ) : (
-            !showProgress && (
-              <EmptyState
-                title="No clips yet"
-                hint="Paste a URL or enter a topic, pick your style and platforms, then generate."
-              />
-            )
+            <EmptyState
+              title="No clips yet"
+              hint="Paste a URL or upload a video, pick your length and style, then generate."
+            />
           )}
         </div>
       </div>
