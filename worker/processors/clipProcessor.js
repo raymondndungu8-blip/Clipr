@@ -296,18 +296,29 @@ async function renderClip(sourcePath, outputPath, segment, caption, index) {
 }
 
 // ---------------------------------------------------------------------------
+// Progress is best-effort — never let a failed progress write abort the job.
+// ---------------------------------------------------------------------------
+async function reportProgress(jobId, progress) {
+  try {
+    await updateClipJob(jobId, { progress });
+  } catch (err) {
+    console.warn(`[clip] job ${jobId}: progress update failed (${progress}%):`, err.message);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main entry point.
 // ---------------------------------------------------------------------------
 async function processClipJob({ jobId, sourceUrl, topic /* , platforms */ }) {
   const tmpDir = path.join(os.tmpdir(), 'clipr', String(jobId));
 
   try {
-    await updateClipJob(jobId, { status: 'processing' });
+    await updateClipJob(jobId, { status: 'processing', progress: 2 });
 
     // Topic-only job: the Next.js app already generated the AI clip metadata,
     // there is no source video to cut — just mark it done.
     if (!sourceUrl) {
-      await updateClipJob(jobId, { status: 'done' });
+      await updateClipJob(jobId, { status: 'done', progress: 100 });
       await postCallback({ jobId, status: 'done', clips: [] });
       console.log(`[clip] job ${jobId}: topic-only, marked done`);
       return;
@@ -318,12 +329,16 @@ async function processClipJob({ jobId, sourceUrl, topic /* , platforms */ }) {
 
     console.log(`[clip] job ${jobId}: downloading source`);
     await downloadSource(sourceUrl, sourcePath);
+    await reportProgress(jobId, 15);
 
     const duration = await getDuration(sourcePath);
     console.log(`[clip] job ${jobId}: source duration ${duration.toFixed(1)}s`);
 
     const segments = await findLoudestSegments(sourcePath, duration);
+    await reportProgress(jobId, 30);
+
     const transcription = await tryTranscribe(sourcePath, tmpDir);
+    await reportProgress(jobId, 40);
 
     const clips = [];
     for (let i = 0; i < segments.length; i++) {
@@ -336,9 +351,10 @@ async function processClipJob({ jobId, sourceUrl, topic /* , platforms */ }) {
 
       const r2Url = await uploadFile(outputPath, `clips/${jobId}/${i + 1}.mp4`);
       clips.push({ r2Url, duration: Math.round(segment.duration) });
+      await reportProgress(jobId, 40 + Math.round(((i + 1) / segments.length) * 55));
     }
 
-    await updateClipJob(jobId, { status: 'done' });
+    await updateClipJob(jobId, { status: 'done', progress: 100 });
     await postCallback({ jobId, status: 'done', clips });
     console.log(`[clip] job ${jobId}: done (${clips.length} clips)`);
   } catch (err) {

@@ -44,6 +44,8 @@ next-env.d.ts
 
 # local dev artifacts
 dev.log
+.vercel-deploy*.log
+.fly-deploy*.log
 .stitch/
 
 # remotion render output + cache
