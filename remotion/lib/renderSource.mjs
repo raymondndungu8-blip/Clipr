@@ -15,6 +15,8 @@ import { selectComposition, renderMedia } from "@remotion/renderer";
 import ffmpegPath from "ffmpeg-static";
 import ffprobeStatic from "ffprobe-static";
 import { uploadVideo } from "./upload.mjs";
+import { computeReframe } from "./reframe.mjs";
+import { extractSegmentWords } from "./segmentWords.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCES_DIR = path.join(ROOT, "public", "sources");
@@ -338,9 +340,42 @@ export async function renderSourceClip(opts) {
       return await renderCaptionsClip(opts);
     }
     const { videoRel, vttPath, segmented } = downloaded;
+    const absVideo = path.join(ROOT, "public", videoRel);
     let captions = [];
     if (vttPath && existsSync(vttPath)) {
       captions = buildCaptions(parseVtt(await readFile(vttPath, "utf8")), start, end, clipLen);
+    }
+
+    // Karaoke: word-level cues (clip-relative) transcribed from the actual
+    // segment audio. Best-effort — falls back to VTT line captions if empty.
+    // Whisper adds CPU per render; set DISABLE_KARAOKE_WHISPER=1 to skip it
+    // (clips then use the line-level VTT captions instead).
+    let words = [];
+    if (process.env.DISABLE_KARAOKE_WHISPER !== "1") {
+      try {
+        const w = await extractSegmentWords({
+          videoPath: absVideo,
+          start,
+          end,
+          segmented,
+        });
+        words = Array.isArray(w?.words) ? w.words : [];
+      } catch (err) {
+        console.warn(`[render] word extraction failed: ${err?.message || err}`);
+      }
+    }
+
+    // Subject-tracking reframe keyframes over the exact rendered window.
+    // Best-effort — null means the composition uses a static centre crop.
+    let reframeData = null;
+    try {
+      reframeData = computeReframe(
+        absVideo,
+        segmented ? 0 : start,
+        segmented ? clipLen : end
+      );
+    } catch (err) {
+      console.warn(`[render] reframe analysis failed: ${err?.message || err}`);
     }
 
     const inputProps = {
@@ -349,6 +384,10 @@ export async function renderSourceClip(opts) {
       endSeconds: segmented ? clipLen : end,
       hook,
       captions,
+      words,
+      reframe: reframeData?.reframe ?? [],
+      srcWidth: reframeData?.srcWidth ?? 0,
+      srcHeight: reframeData?.srcHeight ?? 0,
       accent,
     };
 

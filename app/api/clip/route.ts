@@ -4,6 +4,16 @@ import { generateJSON } from "@/lib/anthropic";
 import { listAccounts } from "@/lib/zernio";
 import { youtubeIdFromUrl } from "@/lib/youtube";
 import { ClipInputSchema } from "@/lib/validations/clip";
+import {
+  snapSegmentToBoundaries,
+  lengthWindow,
+  formatDuration,
+  type Boundary,
+} from "@/lib/clipSnap";
+
+// Give the route enough headroom for a bounded transcript fetch + the AI
+// selection call, without allowing an unbounded hang.
+export const maxDuration = 60;
 
 interface ClipMeta {
   title: string;
@@ -36,12 +46,23 @@ function lengthGuide(preset?: string): string {
 
 type TranscriptSegment = { start: number; dur: number; text: string };
 
-/** Fetch the real video transcript from the worker (not IP-blocked). */
+/**
+ * Fetch the real video transcript from the worker (not IP-blocked).
+ *
+ * Bounded by a hard timeout: residential proxies are inconsistent, and without
+ * a timeout a slow/hung transcript response would stall the whole /api/clip
+ * request for minutes. On timeout or any error we return null and generation
+ * proceeds without transcript grounding (clips are still produced, just not
+ * snapped to sentence boundaries) — never a hang.
+ */
 async function fetchTranscript(
-  videoId: string
+  videoId: string,
+  timeoutMs = Number(process.env.TRANSCRIPT_TIMEOUT_MS) || 20000
 ): Promise<TranscriptSegment[] | null> {
   const workerUrl = process.env.WORKER_URL;
   if (!workerUrl || workerUrl.includes("your-worker")) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(`${workerUrl}/transcript`, {
       method: "POST",
@@ -50,6 +71,7 @@ async function fetchTranscript(
         "x-worker-secret": process.env.WORKER_SECRET ?? "",
       },
       body: JSON.stringify({ videoId }),
+      signal: controller.signal,
     });
     const data = (await res.json()) as {
       ok?: boolean;
@@ -59,7 +81,13 @@ async function fetchTranscript(
       return data.segments;
     }
   } catch (err) {
-    console.error("[api/clip] transcript fetch failed:", err);
+    const reason =
+      err instanceof Error && err.name === "AbortError"
+        ? `timed out after ${timeoutMs}ms`
+        : String(err);
+    console.error(`[api/clip] transcript fetch skipped (${reason})`);
+  } finally {
+    clearTimeout(timer);
   }
   return null;
 }
@@ -245,7 +273,7 @@ For each clip return an object with:
 - "startSeconds": integer start (seconds) in the source${transcript ? " (real transcript timestamp)" : ""}
 - "endSeconds": integer end; endSeconds - startSeconds equals the duration${transcript ? "" : ". Pick different, non-overlapping moments across a typical 8-15 min video"}
 - "bgGradient": a dark CSS linear-gradient string suited to the mood
-- "viralityScore": integer 0-100 predicting viral potential (be honest and differentiated — strong hook + emotion + payoff scores high; flat/rambling scores low)
+- "viralityScore": integer 0-99 predicting viral potential. Score it the way Opus Clip does, weighing four factors: HOOK (do the first ~3 seconds stop the scroll and relate to the payoff?), FLOW (does it build and resolve as one complete, self-contained thought — not a random slice?), VALUE (does the viewer leave with insight, emotion or entertainment?), and TREND (does the topic ride current interest?). Be honest and differentiated — only genuinely strong moments break 80; flat or rambling moments score low.
 - "viralityTag": 1-3 word reason it could pop (e.g. "Strong Hook", "Emotional", "Controversial", "Actionable", "Surprising")
 - "scoreReason": one short sentence on why it scored that
 
@@ -255,6 +283,36 @@ Return ONLY a JSON array of exactly ${count} objects, sorted by viralityScore de
 
     if (!Array.isArray(clipsJson) || clipsJson.length === 0) {
       throw new Error("Claude did not return a clip array");
+    }
+
+    // 2b. Opus-style "clean clip" snapping. When we have the real transcript,
+    //     pull each clip's start/end onto spoken-line boundaries so it begins
+    //     and ends on a complete thought (never mid-sentence), then re-derive
+    //     the displayed duration from the snapped span.
+    if (transcript && transcript.length > 0) {
+      const boundaries: Boundary[] = transcript.map((s) => ({
+        start: s.start,
+        end: s.start + s.dur,
+        text: s.text,
+      }));
+      const window = lengthWindow(parsed.data.clipLength);
+      for (const clip of clipsJson) {
+        if (
+          typeof clip.startSeconds !== "number" ||
+          typeof clip.endSeconds !== "number"
+        ) {
+          continue;
+        }
+        const snapped = snapSegmentToBoundaries(
+          clip.startSeconds,
+          clip.endSeconds,
+          boundaries,
+          window
+        );
+        clip.startSeconds = snapped.startSeconds;
+        clip.endSeconds = snapped.endSeconds;
+        clip.duration = formatDuration(snapped.endSeconds - snapped.startSeconds);
+      }
     }
 
     // 3. Persist clips

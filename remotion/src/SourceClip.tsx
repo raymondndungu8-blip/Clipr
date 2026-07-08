@@ -17,6 +17,13 @@ export const captionCueSchema = z.object({
   text: z.string(),
 });
 
+/** Subject-tracking reframe keyframe: at clip-relative time t, the subject's
+ *  horizontal centre is at cx (0..1 across the source width). */
+export const reframeCueSchema = z.object({
+  t: z.number(),
+  cx: z.number(),
+});
+
 export const sourceClipSchema = z.object({
   /** Path within remotion/public (use staticFile) to the downloaded source mp4. */
   videoSrc: z.string(),
@@ -27,6 +34,11 @@ export const sourceClipSchema = z.object({
   captions: z.array(captionCueSchema),
   /** Word-level cues for karaoke captions (preferred when present). */
   words: z.array(captionCueSchema).optional(),
+  /** Subject-tracking pan keyframes (empty/omitted → static centre crop). */
+  reframe: z.array(reframeCueSchema).optional(),
+  /** Source video pixel dimensions (needed to compute the pan). */
+  srcWidth: z.number().optional(),
+  srcHeight: z.number().optional(),
   accent: z.string().default("#3d7bff"),
 });
 
@@ -39,6 +51,28 @@ export type SourceClipProps = z.infer<typeof sourceClipSchema>;
  */
 const WORDS_PER_LINE = 3;
 const HIGHLIGHT = "#22e06a"; // bright green for the active (spoken) word
+const FRAME_W = 1080; // composition width (9:16 vertical)
+const FRAME_H = 1920; // composition height
+
+type ReframeCue = { t: number; cx: number };
+
+/** Interpolate the subject centre (0..1) at a clip-relative time. */
+function sampleCx(cues: ReframeCue[], time: number): number {
+  if (!cues.length) return 0.5;
+  if (time <= cues[0].t) return cues[0].cx;
+  const lastCue = cues[cues.length - 1];
+  if (time >= lastCue.t) return lastCue.cx;
+  for (let i = 0; i < cues.length - 1; i++) {
+    const a = cues[i];
+    const b = cues[i + 1];
+    if (time >= a.t && time <= b.t) {
+      const span = b.t - a.t;
+      const f = span > 0 ? (time - a.t) / span : 0;
+      return a.cx + (b.cx - a.cx) * f;
+    }
+  }
+  return lastCue.cx;
+}
 
 export const SourceClip: React.FC<SourceClipProps> = ({
   videoSrc,
@@ -47,12 +81,47 @@ export const SourceClip: React.FC<SourceClipProps> = ({
   hook,
   captions,
   words,
+  reframe,
+  srcWidth,
+  srcHeight,
   accent,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const t = startSeconds + frame / fps; // current time in source coordinates
   const local = frame / fps; // time since clip start
+
+  // Subject-tracking reframe: when we have pan keyframes AND the source pixel
+  // size, pan a height-filled copy of the video so the speaker stays centred.
+  // Otherwise fall back to a static centre crop (identical to the old behaviour).
+  const reframeCues: ReframeCue[] = reframe ?? [];
+  const videoResolvedSrc = videoSrc.startsWith("http")
+    ? videoSrc
+    : staticFile(videoSrc);
+  const trimBefore = Math.round(startSeconds * fps);
+  const trimAfter = Math.round(endSeconds * fps);
+
+  let panStyle: React.CSSProperties | null = null;
+  if (reframeCues.length > 0 && srcWidth && srcHeight && srcHeight > 0) {
+    const scale = FRAME_H / srcHeight;
+    const scaledW = srcWidth * scale;
+    // Only pan when the height-filled video is actually wider than the frame.
+    if (scaledW > FRAME_W + 1) {
+      const panRange = scaledW - FRAME_W;
+      const cx = sampleCx(reframeCues, local);
+      let left = cx * scaledW - FRAME_W / 2;
+      left = Math.max(0, Math.min(panRange, left));
+      panStyle = {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: scaledW,
+        height: FRAME_H,
+        transform: `translateX(${-left}px)`,
+        objectFit: "cover",
+      };
+    }
+  }
 
   const wordCues = words ?? [];
   const activeCaption = captions.find((c) => local >= c.start && local < c.end);
@@ -83,14 +152,24 @@ export const SourceClip: React.FC<SourceClipProps> = ({
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
-      {/* real footage, cover-cropped to vertical */}
-      <AbsoluteFill>
-        <OffthreadVideo
-          src={videoSrc.startsWith("http") ? videoSrc : staticFile(videoSrc)}
-          trimBefore={Math.round(startSeconds * fps)}
-          trimAfter={Math.round(endSeconds * fps)}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-        />
+      {/* real footage — subject-tracked pan when reframe data is present,
+          otherwise a static centre crop (unchanged fallback). */}
+      <AbsoluteFill style={{ overflow: "hidden" }}>
+        {panStyle ? (
+          <OffthreadVideo
+            src={videoResolvedSrc}
+            trimBefore={trimBefore}
+            trimAfter={trimAfter}
+            style={panStyle}
+          />
+        ) : (
+          <OffthreadVideo
+            src={videoResolvedSrc}
+            trimBefore={trimBefore}
+            trimAfter={trimAfter}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        )}
       </AbsoluteFill>
 
       {/* subtle bottom scrim for caption legibility */}
