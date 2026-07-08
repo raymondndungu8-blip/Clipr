@@ -3,66 +3,16 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { spawn } = require('child_process');
 
 const { ffmpeg, ffmpegPath, run, getDuration } = require('../lib/ffmpeg');
 const { uploadFile } = require('../lib/r2Upload');
 const { updateClipJob, postCallback } = require('../lib/supabaseCallback');
+const { spawnCapture } = require('../lib/proc');
 
 const CLIP_LENGTH = 30; // seconds per clip
 const CLIP_COUNT = 3;
 const YTDLP_TIMEOUT_MS = 5 * 60 * 1000;
 const RENDER_TIMEOUT_MS = 10 * 60 * 1000;
-
-// ---------------------------------------------------------------------------
-// Small process helper: spawn a binary, capture output, enforce a timeout.
-// ---------------------------------------------------------------------------
-function spawnCapture(bin, args, { timeoutMs = 60000, label = bin } = {}) {
-  return new Promise((resolve, reject) => {
-    let child;
-    try {
-      child = spawn(bin, args, { windowsHide: true });
-    } catch (err) {
-      return reject(new Error(`${label} failed to spawn: ${err.message}`));
-    }
-
-    let stdout = '';
-    let stderr = '';
-    let settled = false;
-
-    const timer = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      try {
-        child.kill('SIGKILL');
-      } catch {
-        // already dead
-      }
-      reject(new Error(`${label} timed out after ${Math.round(timeoutMs / 1000)}s`));
-    }, timeoutMs);
-
-    child.stdout.on('data', (d) => {
-      stdout += d;
-      if (stdout.length > 1_000_000) stdout = stdout.slice(-500_000);
-    });
-    child.stderr.on('data', (d) => {
-      stderr += d;
-      if (stderr.length > 1_000_000) stderr = stderr.slice(-500_000);
-    });
-    child.on('error', (err) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      reject(new Error(`${label} failed to start: ${err.message}`));
-    });
-    child.on('close', (code) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve({ code, stdout, stderr });
-    });
-  });
-}
 
 // ---------------------------------------------------------------------------
 // Step 2: download source with yt-dlp.
@@ -108,27 +58,30 @@ async function measureMeanVolume(sourcePath, start, length) {
   return Number(match[1]);
 }
 
-function fallbackSegments(duration) {
+function fallbackSegments(duration, count = CLIP_COUNT) {
   const length = Math.min(CLIP_LENGTH, Math.max(5, duration / 4));
-  return [0.1, 0.4, 0.7].map((fraction) => {
-    const start = Math.max(0, Math.min(duration * fraction, duration - length));
-    return { start, duration: length };
-  });
+  const segments = [];
+  for (let i = 0; i < count; i++) {
+    const fraction = (i + 1) / (count + 1);
+    const start = Math.max(0, Math.min(duration * fraction, Math.max(0, duration - length)));
+    segments.push({ start, duration: length });
+  }
+  return segments;
 }
 
-async function findLoudestSegments(sourcePath, duration) {
-  if (!Number.isFinite(duration) || duration <= CLIP_LENGTH * CLIP_COUNT) {
-    return fallbackSegments(duration);
+async function findLoudestSegments(sourcePath, duration, count = CLIP_COUNT) {
+  if (!Number.isFinite(duration) || duration <= CLIP_LENGTH * count) {
+    return fallbackSegments(duration, count);
   }
 
   try {
     // Cap the number of sampled windows so very long videos stay cheap.
-    const step = Math.max(CLIP_LENGTH, Math.floor(duration / 20));
+    const step = Math.max(CLIP_LENGTH, Math.floor(duration / (count * 6)));
     const windows = [];
     for (let start = 0; start + CLIP_LENGTH <= duration; start += step) {
       windows.push(start);
     }
-    if (windows.length < CLIP_COUNT) return fallbackSegments(duration);
+    if (windows.length < count) return fallbackSegments(duration, count);
 
     const measured = [];
     for (const start of windows) {
@@ -139,23 +92,23 @@ async function findLoudestSegments(sourcePath, duration) {
         console.warn(`[clip] volumedetect failed at ${start}s: ${err.message}`);
       }
     }
-    if (measured.length < CLIP_COUNT) return fallbackSegments(duration);
+    if (measured.length < count) return fallbackSegments(duration, count);
 
-    // Loudest first, then keep the first 3 that don't overlap.
+    // Loudest first, then keep the first `count` that don't overlap.
     measured.sort((a, b) => b.meanVolume - a.meanVolume);
     const picked = [];
     for (const candidate of measured) {
       const overlaps = picked.some((p) => Math.abs(p.start - candidate.start) < CLIP_LENGTH);
       if (!overlaps) picked.push(candidate);
-      if (picked.length === CLIP_COUNT) break;
+      if (picked.length === count) break;
     }
-    if (picked.length < CLIP_COUNT) return fallbackSegments(duration);
+    if (picked.length < count) return fallbackSegments(duration, count);
 
     picked.sort((a, b) => a.start - b.start);
     return picked.map((p) => ({ start: p.start, duration: CLIP_LENGTH }));
   } catch (err) {
     console.warn('[clip] loudness analysis failed, using fallback segments:', err.message);
-    return fallbackSegments(duration);
+    return fallbackSegments(duration, count);
   }
 }
 
@@ -375,4 +328,18 @@ async function processClipJob({ jobId, sourceUrl, topic /* , platforms */ }) {
   }
 }
 
-module.exports = { processClipJob };
+module.exports = {
+  processClipJob,
+  // Shared building blocks reused by renderProcessor.js / uploadProcessor.js
+  // so the render-worker rewrite doesn't have to re-derive proven logic.
+  downloadSource,
+  findLoudestSegments,
+  tryTranscribe,
+  captionForSegment,
+  sanitizeCaption,
+  renderClip,
+  buildCommand,
+  BASE_FILTER,
+  CLIP_LENGTH,
+  CLIP_COUNT,
+};

@@ -4,6 +4,9 @@ const express = require('express');
 
 const { processClipJob } = require('./processors/clipProcessor');
 const { assembleFacelessVideo } = require('./processors/videoProcessor');
+const { processRenderJob } = require('./processors/renderProcessor');
+const { processUploadJob } = require('./processors/uploadProcessor');
+const { getTranscript } = require('./processors/transcriptProcessor');
 
 const app = express();
 
@@ -78,6 +81,78 @@ app.post('/assemble', (req, res) => {
   setImmediate(() => {
     assembleFacelessVideo({ videoId, scenes, voiceoverUrl }).catch((err) => {
       console.error(`[assemble] video ${videoId} crashed unexpectedly:`, err);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /transcript — fetch a YouTube video's auto-captions (no video
+// download) and return them as {start, dur, text} segments. Synchronous:
+// this is a lightweight subtitle-only fetch, not a full render job.
+// Body: { videoId }
+// ---------------------------------------------------------------------------
+app.post('/transcript', async (req, res) => {
+  const { videoId } = req.body || {};
+  if (!videoId || typeof videoId !== 'string') {
+    return res.status(400).json({ error: 'videoId is required' });
+  }
+
+  try {
+    const segments = await getTranscript(videoId);
+    if (!segments) return res.json({ ok: false, segments: [] });
+    return res.json({ ok: true, segments });
+  } catch (err) {
+    console.error(`[transcript] ${videoId} failed:`, err);
+    return res.json({ ok: false, segments: [] });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /render — render one clip (real YouTube segment when given, otherwise
+// a caption-and-hook-over-gradient fallback) or one faceless-video script,
+// upload it to R2, and report back via /api/worker/callback.
+// Body: { clipId, table?, hook, captions, gradient, accent, key, url?, start?, end?, duration? }
+// ---------------------------------------------------------------------------
+app.post('/render', (req, res) => {
+  const { clipId, table, hook, captions, gradient, accent, key, url, start, end, duration } = req.body || {};
+
+  if (!clipId || (typeof clipId !== 'string' && typeof clipId !== 'number')) {
+    return res.status(400).json({ error: 'clipId is required' });
+  }
+  if (captions !== undefined && captions !== null && !Array.isArray(captions)) {
+    return res.status(400).json({ error: 'captions must be an array when provided' });
+  }
+
+  res.status(202).json({ accepted: true, clipId });
+
+  setImmediate(() => {
+    processRenderJob({ clipId, table, hook, captions, gradient, accent, key, url, start, end, duration }).catch((err) => {
+      console.error(`[render] ${clipId} crashed unexpectedly:`, err);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /process-upload — the counterpart to /process for uploaded files: no
+// sourceUrl, instead a Supabase Storage key for the file the browser already
+// uploaded straight to storage.
+// Body: { jobId, key, count, style, platforms, accent, clipLength, topic }
+// ---------------------------------------------------------------------------
+app.post('/process-upload', (req, res) => {
+  const { jobId, key, count, topic } = req.body || {};
+
+  if (!jobId || (typeof jobId !== 'string' && typeof jobId !== 'number')) {
+    return res.status(400).json({ error: 'jobId is required' });
+  }
+  if (!key || typeof key !== 'string') {
+    return res.status(400).json({ error: 'key is required' });
+  }
+
+  res.status(202).json({ accepted: true, jobId });
+
+  setImmediate(() => {
+    processUploadJob({ jobId, key, count, topic }).catch((err) => {
+      console.error(`[process-upload] job ${jobId} crashed unexpectedly:`, err);
     });
   });
 });

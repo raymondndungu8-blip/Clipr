@@ -32,8 +32,12 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files (can opt-in for committing if needed) — but .env.example files are
+# secret-free templates that should be tracked so setup docs (worker/README.md)
+# have something to point at.
 .env*
+!.env.example
+!**/.env.example
 
 # vercel
 .vercel

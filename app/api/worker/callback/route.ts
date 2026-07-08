@@ -20,7 +20,20 @@ const VideoCallbackSchema = z.object({
   error: z.string().optional(),
 });
 
-const CallbackSchema = z.union([ClipCallbackSchema, VideoCallbackSchema]);
+// Per-clip render result (POST /api/render dispatches one clip at a time by
+// id, unlike the bulk job-level flow above).
+const SingleClipCallbackSchema = z.object({
+  clipId: z.uuid(),
+  status: z.enum(["done", "failed"]),
+  r2Url: z.string().optional(),
+  error: z.string().optional(),
+});
+
+const CallbackSchema = z.union([
+  ClipCallbackSchema,
+  VideoCallbackSchema,
+  SingleClipCallbackSchema,
+]);
 
 export async function POST(req: NextRequest) {
   const secret = req.headers.get("x-worker-secret");
@@ -71,12 +84,18 @@ export async function POST(req: NextRequest) {
           );
         }
       }
-    } else {
+    } else if ("videoId" in parsed.data) {
       const { videoId, status, r2Url } = parsed.data;
       await supabase
         .from("faceless_videos")
         .update({ status, r2_url: r2Url ?? null })
         .eq("id", videoId);
+    } else {
+      // Per-clip render result from POST /api/render (one clip at a time).
+      const { clipId, r2Url } = parsed.data;
+      if (r2Url) {
+        await supabase.from("clips").update({ r2_url: r2Url }).eq("id", clipId);
+      }
     }
 
     return NextResponse.json({ ok: true });

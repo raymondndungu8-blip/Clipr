@@ -75,4 +75,4 @@ async function postCallback(payload) {
   return false;
 }
 
-module.exports = { updateJobStatus, updateClipJob, updateFacelessVideo, postCallback };
+module.exports = { getClient, updateJobStatus, updateClipJob, updateFacelessVideo, postCallback };

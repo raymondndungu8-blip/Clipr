@@ -26,6 +26,16 @@ const RenderSchema = z
 const DEFAULT_GRADIENT =
   "linear-gradient(160deg, #14213d 0%, #0a0e1a 55%, #0e1b33 100%)";
 
+/** Parse "0:24" (clips) or "30s"/"45" (faceless videos) into whole seconds. */
+function parseDurationSeconds(input: string | null | undefined): number | undefined {
+  if (!input) return undefined;
+  const mmss = /^(\d+):(\d{1,2})$/.exec(input.trim());
+  if (mmss) return Number(mmss[1]) * 60 + Number(mmss[2]);
+  const secOnly = /^(\d+)\s*s?$/.exec(input.trim());
+  if (secOnly) return Number(secOnly[1]);
+  return undefined;
+}
+
 export async function POST(req: NextRequest) {
   const guard = await guardRoute(req, "clipGenerate");
   if (guard.error) return guard.error;
@@ -80,6 +90,7 @@ export async function POST(req: NextRequest) {
             gradient,
             accent,
             key,
+            duration: parseDurationSeconds(video.duration),
           }),
         });
         if (!res.ok && res.status !== 202) {
@@ -151,6 +162,7 @@ export async function POST(req: NextRequest) {
       gradient: clip.bg_gradient ?? undefined,
       accent,
       key: `clips/${clip.id}.mp4`,
+      duration: parseDurationSeconds(clip.duration),
     };
     if (youtubeId && hasSegment && job?.source_url) {
       body.url = job.source_url;
