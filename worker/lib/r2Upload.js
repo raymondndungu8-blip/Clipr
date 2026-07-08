@@ -1,6 +1,7 @@
 'use strict';
 
 const fs = require('fs');
+const path = require('path');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 
 let cachedClient = null;
@@ -40,6 +41,13 @@ async function uploadFile(localPath, key, contentType = 'video/mp4') {
   if (!publicUrl) throw new Error('R2_PUBLIC_URL is not set');
 
   const { size } = fs.statSync(localPath);
+  // "inline" (not "attachment") so the in-page <video> preview keeps playing
+  // normally — the real "download" path (components/lib/download.ts) always
+  // fetches the bytes as a blob and saves them itself, so it doesn't depend
+  // on this header. This just gives a sane filename to anything that DOES
+  // open the raw URL directly (e.g. a long-press "save" on mobile, or the
+  // window.open() fallback when the blob fetch can't run).
+  const filename = path.basename(key) || 'clip.mp4';
 
   await getClient().send(
     new PutObjectCommand({
@@ -48,6 +56,7 @@ async function uploadFile(localPath, key, contentType = 'video/mp4') {
       Body: fs.createReadStream(localPath),
       ContentLength: size,
       ContentType: contentType,
+      ContentDisposition: `inline; filename="${filename}"`,
     })
   );
 
