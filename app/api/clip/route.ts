@@ -59,7 +59,7 @@ type TranscriptSegment = { start: number; dur: number; text: string };
  */
 async function fetchTranscript(
   videoId: string,
-  timeoutMs = Number(process.env.TRANSCRIPT_TIMEOUT_MS) || 20000
+  timeoutMs = Number(process.env.TRANSCRIPT_TIMEOUT_MS) || 12000
 ): Promise<TranscriptSegment[] | null> {
   const workerUrl = process.env.WORKER_URL;
   if (!workerUrl || workerUrl.includes("your-worker")) return null;
@@ -94,8 +94,9 @@ async function fetchTranscript(
   return null;
 }
 
-/** Condense a transcript into "[s] text" lines within a character budget. */
-function condenseTranscript(segments: TranscriptSegment[], maxChars = 24000) {
+/** Condense a transcript into "[s] text" lines within a character budget.
+ *  A tighter budget = a smaller prompt = a much faster model response. */
+function condenseTranscript(segments: TranscriptSegment[], maxChars = 9000) {
   const lines: string[] = [];
   let total = 0;
   for (const s of segments) {

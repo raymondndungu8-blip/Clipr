@@ -3,7 +3,9 @@
 // the app's clip generation so uploads can be processed entirely on the worker.
 
 const BASE = process.env.LLM_BASE_URL || "https://integrate.api.nvidia.com/v1";
-const MODEL = process.env.LLM_MODEL || "meta/llama-3.3-70b-instruct";
+// Fast, widely-available default so upload processing returns quickly.
+// Override with LLM_MODEL for a larger/more-accurate model.
+const MODEL = process.env.LLM_MODEL || "meta/llama-3.1-8b-instruct";
 
 function stripFences(text) {
   let t = text.trim();
@@ -12,7 +14,7 @@ function stripFences(text) {
   return t;
 }
 
-function condense(segments, maxChars = 24000) {
+function condense(segments, maxChars = 9000) {
   const lines = [];
   let total = 0;
   for (const s of segments) {

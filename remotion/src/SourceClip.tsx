@@ -224,18 +224,28 @@ export const SourceClip: React.FC<SourceClipProps> = ({
             alignItems: "center",
             gap: "0 22px",
             padding: "0 60px",
+            // Each new line eases in instead of snapping — smoother, Opus-like.
+            opacity: interpolate(
+              local - (karaokeLine[0]?.start ?? local),
+              [0, 0.1],
+              [0.35, 1],
+              { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+            ),
           }}
         >
           {karaokeLine.map((w, i) => {
             const isActive = i === activeInLine;
-            const pop = isActive
-              ? interpolate(
-                  Math.max(0, local - w.start),
-                  [0, 0.12],
-                  [0.7, 1],
-                  { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-                )
-              : 1;
+            // Smooth spring pop on the active word (Opus-style) rather than a
+            // hard jump — eases up to a gentle 1.08x scale.
+            const rise = isActive
+              ? spring({
+                  frame: Math.max(0, Math.round((local - w.start) * fps)),
+                  fps,
+                  config: { damping: 18, mass: 0.6, stiffness: 150 },
+                  durationInFrames: 10,
+                })
+              : 0;
+            const scale = 1 + 0.08 * rise;
             return (
               <span
                 key={i}
@@ -250,8 +260,11 @@ export const SourceClip: React.FC<SourceClipProps> = ({
                   WebkitTextStroke: "4px #000",
                   // @ts-expect-error paintOrder is valid CSS, missing in types
                   paintOrder: "stroke fill",
-                  textShadow: "0 6px 22px rgba(0,0,0,0.7)",
-                  transform: `scale(${pop})`,
+                  textShadow: isActive
+                    ? `0 6px 22px rgba(0,0,0,0.7), 0 0 18px ${HIGHLIGHT}66`
+                    : "0 6px 22px rgba(0,0,0,0.7)",
+                  transform: `scale(${scale})`,
+                  transformOrigin: "center bottom",
                   display: "inline-block",
                 }}
               >
