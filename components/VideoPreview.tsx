@@ -204,9 +204,9 @@ export default function VideoPreview({
             // Real footage + audio with NO render — YouTube scrubbed to the clip
             // window. Lets you see and hear the moment before rendering/posting.
             <iframe
-              src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&start=${Math.floor(
+              src={`https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&start=${Math.floor(
                 startSeconds as number
-              )}&end=${Math.ceil(endSeconds as number)}&rel=0&modestbranding=1`}
+              )}&end=${Math.ceil(endSeconds as number)}&rel=0&modestbranding=1&playsinline=1`}
               title="Clip preview"
               allow="autoplay; encrypted-media; picture-in-picture"
               allowFullScreen
@@ -277,6 +277,20 @@ export default function VideoPreview({
                 </span>
               </button>
             </>
+          )}
+          {canPreviewSegment && (
+            <a
+              href={`https://www.youtube.com/watch?v=${youtubeId}&t=${Math.floor(
+                startSeconds as number
+              )}s`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="absolute left-1.5 top-1.5 z-20 rounded-md bg-black/70 px-2 py-0.5 font-mono text-[10px] font-semibold text-white/90 backdrop-blur-sm transition-colors hover:bg-black/90"
+              title="Watch this exact moment on YouTube (works even when inline preview is blocked)"
+            >
+              ↗ YouTube
+            </a>
           )}
         </div>
       </div>
