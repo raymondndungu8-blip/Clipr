@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Copy, Send, Clapperboard, Download } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/types/database";
@@ -13,6 +13,11 @@ import { apiPost, ApiError } from "@/components/lib/api";
 import { saveVideo } from "@/lib/download";
 
 type Clip = Tables<"clips">;
+
+// Serialise auto-renders across all cards into a single queue so the worker
+// renders ONE clip at a time (rendering is memory-heavy — running several at
+// once can OOM the machine). Clips still become ready progressively.
+let autoRenderQueue: Promise<unknown> = Promise.resolve();
 
 export default function ClipCard({
   clip,
@@ -50,7 +55,8 @@ export default function ClipCard({
     return null;
   }
 
-  async function renderVideo() {
+  async function renderVideo(opts?: { silent?: boolean }) {
+    const silent = opts?.silent === true;
     setRendering(true);
     try {
       const resp = await apiPost<{ url?: string; status?: string }>(
@@ -59,25 +65,40 @@ export default function ClipCard({
       );
       if (resp.url) {
         setRenderedUrl(resp.url);
-        toast.success("Clip rendered and saved.");
+        if (!silent) toast.success("Clip rendered and saved.");
         return;
       }
       // Worker is rendering on the server — poll for the result.
-      toast.message("Rendering on the server — this can take a minute…");
+      if (!silent) toast.message("Rendering on the server — this can take a minute…");
       const url = await pollForRender();
       if (url) {
         setRenderedUrl(url);
-        toast.success("Clip rendered and saved.");
-      } else {
+        if (!silent) toast.success("Clip rendered and saved.");
+      } else if (!silent) {
         toast.error("Still rendering — check back in a moment.");
       }
     } catch (err) {
+      if (silent) return;
       if (err instanceof ApiError) toast.error(err.message);
       else toast.error("Couldn't render this clip.");
     } finally {
       setRendering(false);
     }
   }
+
+  // Auto-prepare each clip in the background (queued, one at a time) so it's
+  // ready to download/post — with real speech-synced captions — without a
+  // manual render click. The manual "Render video" button still works as a
+  // fallback. Skips clips that are already rendered.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (autoStarted.current || renderedUrl) return;
+    autoStarted.current = true;
+    autoRenderQueue = autoRenderQueue
+      .then(() => renderVideo({ silent: true }))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function downloadVideo() {
     if (!renderedUrl) return;

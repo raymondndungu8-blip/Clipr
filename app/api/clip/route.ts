@@ -59,7 +59,7 @@ type TranscriptSegment = { start: number; dur: number; text: string };
  */
 async function fetchTranscript(
   videoId: string,
-  timeoutMs = Number(process.env.TRANSCRIPT_TIMEOUT_MS) || 12000
+  timeoutMs = Number(process.env.TRANSCRIPT_TIMEOUT_MS) || 20000
 ): Promise<TranscriptSegment[] | null> {
   const workerUrl = process.env.WORKER_URL;
   if (!workerUrl || workerUrl.includes("your-worker")) return null;
