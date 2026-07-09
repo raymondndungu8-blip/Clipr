@@ -48,6 +48,9 @@ type VideoPreviewProps = {
   videoUrl?: string | null;
   /** YouTube id — shows the real video frame (static thumbnail, no watermark). */
   youtubeId?: string | null;
+  /** Clip window in the source video (seconds) — enables inline segment playback. */
+  startSeconds?: number | null;
+  endSeconds?: number | null;
   /** Caption highlight colour (overrides captionStyle). */
   accent?: string;
   /** Named caption style (used by the Caption Animator). */
@@ -68,6 +71,8 @@ export default function VideoPreview({
   bgGradient,
   videoUrl,
   youtubeId,
+  startSeconds,
+  endSeconds,
   accent,
   captionStyle,
   activeIndex,
@@ -78,7 +83,22 @@ export default function VideoPreview({
     accent ?? (captionStyle ? STYLE_TO_ACCENT[captionStyle] : "#22e06a");
   const safeCaptions = captions?.filter(Boolean) ?? [];
   const [index, setIndex] = useState(0);
+  const [playingSegment, setPlayingSegment] = useState(false);
   const controlled = typeof activeIndex === "number";
+
+  // When we know the exact clip window, the play button can preview the REAL
+  // footage + audio straight from YouTube — no render needed — by embedding the
+  // player scrubbed to [start, end]. Rendering is only needed to download/post.
+  const canPreviewSegment =
+    !!youtubeId &&
+    typeof startSeconds === "number" &&
+    typeof endSeconds === "number" &&
+    endSeconds > startSeconds;
+
+  function handlePlay() {
+    if (canPreviewSegment) setPlayingSegment(true);
+    else onPlayClick?.();
+  }
 
   useEffect(() => {
     if (controlled || safeCaptions.length <= 1) return;
@@ -180,6 +200,18 @@ export default function VideoPreview({
               playsInline
               className="absolute inset-0 h-full w-full bg-black object-cover"
             />
+          ) : playingSegment && canPreviewSegment ? (
+            // Real footage + audio with NO render — YouTube scrubbed to the clip
+            // window. Lets you see and hear the moment before rendering/posting.
+            <iframe
+              src={`https://www.youtube.com/embed/${youtubeId}?autoplay=1&start=${Math.floor(
+                startSeconds as number
+              )}&end=${Math.ceil(endSeconds as number)}&rel=0&modestbranding=1`}
+              title="Clip preview"
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+              className="absolute inset-0 h-full w-full bg-black"
+            />
           ) : showThumb ? (
             <>
               {/* real video frame — static thumbnail, no YouTube player/watermark */}
@@ -193,7 +225,7 @@ export default function VideoPreview({
               {overlay}
               <button
                 type="button"
-                onClick={onPlayClick}
+                onClick={handlePlay}
                 aria-label="Play clip"
                 className="absolute inset-0 flex items-center justify-center"
               >
@@ -224,7 +256,7 @@ export default function VideoPreview({
               {overlay}
               <button
                 type="button"
-                onClick={onPlayClick}
+                onClick={handlePlay}
                 aria-label="Play clip"
                 className="absolute inset-0 flex items-center justify-center"
               >

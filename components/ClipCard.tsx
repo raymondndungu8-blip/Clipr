@@ -122,6 +122,8 @@ export default function ClipCard({
           bgGradient={clip.bg_gradient ?? undefined}
           videoUrl={renderedUrl}
           youtubeId={youtubeId}
+          startSeconds={clip.start_seconds}
+          endSeconds={clip.end_seconds}
           accent={accent}
           onPlayClick={rendering ? undefined : renderVideo}
         />
