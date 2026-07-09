@@ -12,8 +12,10 @@ import {
 } from "@/lib/clipSnap";
 
 // Give the route enough headroom for a bounded transcript fetch + the AI
-// selection call, without allowing an unbounded hang.
-export const maxDuration = 60;
+// selection call (the 70B model can take 40-60s). The transcript fetch is
+// itself capped (fetchTranscript timeout), so this bounds total time without
+// the earlier 60s ceiling that caused 504s on slower runs.
+export const maxDuration = 300;
 
 interface ClipMeta {
   title: string;
