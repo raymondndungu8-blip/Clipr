@@ -13,10 +13,12 @@ const BASE_URL =
 const MODEL = process.env.LLM_MODEL || "meta/llama-3.1-8b-instruct";
 
 function getApiKey(): string {
-  const key = process.env.NVIDIA_API_KEY || process.env.LLM_API_KEY;
+  // Prefer LLM_API_KEY so switching providers (e.g. to Groq) actually takes
+  // effect even when the old NVIDIA_API_KEY is still present in the env.
+  const key = process.env.LLM_API_KEY || process.env.NVIDIA_API_KEY;
   if (!key || key.includes("...")) {
     throw new Error(
-      "LLM is not configured — set NVIDIA_API_KEY (or LLM_API_KEY) in .env.local."
+      "LLM is not configured — set LLM_API_KEY (or NVIDIA_API_KEY) in the environment."
     );
   }
   return key;
