@@ -202,16 +202,21 @@ export default function VideoPreview({
             />
           ) : playingSegment && canPreviewSegment ? (
             // Real footage + audio with NO render — YouTube scrubbed to the clip
-            // window. Lets you see and hear the moment before rendering/posting.
-            <iframe
-              src={`https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&start=${Math.floor(
-                startSeconds as number
-              )}&end=${Math.ceil(endSeconds as number)}&rel=0&modestbranding=1&playsinline=1`}
-              title="Clip preview"
-              allow="autoplay; encrypted-media; picture-in-picture"
-              allowFullScreen
-              className="absolute inset-0 h-full w-full bg-black"
-            />
+            // window, with the caption/hook overlay on top so you preview the
+            // subtitles too. The overlay is click-through (pointer-events-none)
+            // so YouTube's own play/pause/seek controls still work.
+            <>
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&start=${Math.floor(
+                  startSeconds as number
+                )}&end=${Math.ceil(endSeconds as number)}&rel=0&modestbranding=1&playsinline=1`}
+                title="Clip preview"
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+                className="absolute inset-0 h-full w-full bg-black"
+              />
+              {overlay}
+            </>
           ) : showThumb ? (
             <>
               {/* real video frame — static thumbnail, no YouTube player/watermark */}
