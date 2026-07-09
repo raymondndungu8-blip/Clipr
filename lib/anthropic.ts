@@ -4,13 +4,20 @@
 // LLM_MODEL + the matching key to use any other OpenAI-compatible provider.
 // (File kept as lib/anthropic.ts so existing route imports don't change.)
 
-const BASE_URL =
-  process.env.LLM_BASE_URL || "https://integrate.api.nvidia.com/v1";
+// Read provider config at CALL time, not module load. Module-level consts get
+// constant-folded/frozen at build time, so a runtime env change (e.g. switching
+// to Groq via LLM_BASE_URL / LLM_MODEL) would be ignored — which sent the Groq
+// key to the NVIDIA endpoint and produced a 401. Reading them lazily fixes that.
+function getBaseUrl(): string {
+  return (
+    process.env.LLM_BASE_URL || "https://integrate.api.nvidia.com/v1"
+  ).trim();
+}
 // Default to a fast, widely-available model so clip generation returns quickly.
-// The 70B model was accurate but slow (30-120s under load) and caused timeouts;
-// the 8B instruct model produces the same JSON shape in a fraction of the time.
 // Override with LLM_MODEL to use a larger model if you prefer accuracy over speed.
-const MODEL = process.env.LLM_MODEL || "meta/llama-3.1-8b-instruct";
+function getModel(): string {
+  return (process.env.LLM_MODEL || "meta/llama-3.1-8b-instruct").trim();
+}
 
 function getApiKey(): string {
   // Prefer LLM_API_KEY so switching providers (e.g. to Groq) actually takes
@@ -67,14 +74,14 @@ export async function generateJSON<T>(opts: {
 
   let res: Response;
   try {
-    res = await fetch(`${BASE_URL}/chat/completions`, {
+    res = await fetch(`${getBaseUrl()}/chat/completions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${getApiKey()}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: getModel(),
         messages: [
           { role: "system", content: opts.system },
           { role: "user", content: opts.prompt },
