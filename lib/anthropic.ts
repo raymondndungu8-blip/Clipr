@@ -15,7 +15,9 @@ const MODEL = process.env.LLM_MODEL || "meta/llama-3.1-8b-instruct";
 function getApiKey(): string {
   // Prefer LLM_API_KEY so switching providers (e.g. to Groq) actually takes
   // effect even when the old NVIDIA_API_KEY is still present in the env.
-  const key = process.env.LLM_API_KEY || process.env.NVIDIA_API_KEY;
+  // .trim() removes any stray whitespace/newline from a pasted secret, which
+  // otherwise makes the Authorization header invalid (401 Unauthorized).
+  const key = (process.env.LLM_API_KEY || process.env.NVIDIA_API_KEY || "").trim();
   if (!key || key.includes("...")) {
     throw new Error(
       "LLM is not configured — set LLM_API_KEY (or NVIDIA_API_KEY) in the environment."

@@ -139,7 +139,7 @@ function snapToBoundaries(startSeconds, endSeconds, boundaries, window) {
  * @param {{segments:{start:number,end:number,text:string}[], count:number, style:string, platforms:string[], clipLength?:string, topic?:string|null}} opts
  */
 export async function generateClipsFromTranscript(opts) {
-  const key = process.env.LLM_API_KEY || process.env.NVIDIA_API_KEY;
+  const key = (process.env.LLM_API_KEY || process.env.NVIDIA_API_KEY || "").trim();
   if (!key) throw new Error("LLM_API_KEY / NVIDIA_API_KEY not configured on the worker");
   const { segments, count, style, platforms, clipLength, topic } = opts;
   const transcript = condense(segments);
