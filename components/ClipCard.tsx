@@ -146,7 +146,7 @@ export default function ClipCard({
           startSeconds={clip.start_seconds}
           endSeconds={clip.end_seconds}
           accent={accent}
-          onPlayClick={rendering ? undefined : renderVideo}
+          onPlayClick={rendering ? undefined : () => renderVideo()}
         />
         {typeof score === "number" && (
           <div
@@ -210,7 +210,7 @@ export default function ClipCard({
         <Button
           variant="outline"
           size="sm"
-          onClick={renderVideo}
+          onClick={() => renderVideo()}
           disabled={rendering}
         >
           {rendering ? (
