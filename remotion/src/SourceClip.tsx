@@ -51,9 +51,6 @@ export type SourceClipProps = z.infer<typeof sourceClipSchema>;
  */
 const WORDS_PER_LINE = 3;
 const HIGHLIGHT = "#22e06a"; // bright green for the active (spoken) word
-const FRAME_W = 1080; // composition width (9:16 vertical)
-const FRAME_H = 1920; // composition height
-
 type ReframeCue = { t: number; cx: number };
 
 /** Interpolate the subject centre (0..1) at a clip-relative time. */
@@ -82,8 +79,6 @@ export const SourceClip: React.FC<SourceClipProps> = ({
   captions,
   words,
   reframe,
-  srcWidth,
-  srcHeight,
   accent,
 }) => {
   const frame = useCurrentFrame();
@@ -101,27 +96,12 @@ export const SourceClip: React.FC<SourceClipProps> = ({
   const trimBefore = Math.round(startSeconds * fps);
   const trimAfter = Math.round(endSeconds * fps);
 
-  let panStyle: React.CSSProperties | null = null;
-  if (reframeCues.length > 0 && srcWidth && srcHeight && srcHeight > 0) {
-    const scale = FRAME_H / srcHeight;
-    const scaledW = srcWidth * scale;
-    // Only pan when the height-filled video is actually wider than the frame.
-    if (scaledW > FRAME_W + 1) {
-      const panRange = scaledW - FRAME_W;
-      const cx = sampleCx(reframeCues, local);
-      let left = cx * scaledW - FRAME_W / 2;
-      left = Math.max(0, Math.min(panRange, left));
-      panStyle = {
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: scaledW,
-        height: FRAME_H,
-        transform: `translateX(${-left}px)`,
-        objectFit: "cover",
-      };
-    }
-  }
+  // Lightweight subject-tracking reframe: keep the video at frame size and pan
+  // the cover-crop horizontally via object-position. This avoids rendering a
+  // huge off-screen canvas (the previous approach), which was OOM-ing the
+  // worker and making renders slow/expensive. cx 0.5 = centred crop (fallback).
+  const reframeCx = reframeCues.length > 0 ? sampleCx(reframeCues, local) : 0.5;
+  const objectPositionX = Math.round(Math.max(0, Math.min(1, reframeCx)) * 100);
 
   const wordCues = words ?? [];
   const activeCaption = captions.find((c) => local >= c.start && local < c.end);
@@ -155,21 +135,17 @@ export const SourceClip: React.FC<SourceClipProps> = ({
       {/* real footage — subject-tracked pan when reframe data is present,
           otherwise a static centre crop (unchanged fallback). */}
       <AbsoluteFill style={{ overflow: "hidden" }}>
-        {panStyle ? (
-          <OffthreadVideo
-            src={videoResolvedSrc}
-            trimBefore={trimBefore}
-            trimAfter={trimAfter}
-            style={panStyle}
-          />
-        ) : (
-          <OffthreadVideo
-            src={videoResolvedSrc}
-            trimBefore={trimBefore}
-            trimAfter={trimAfter}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
-        )}
+        <OffthreadVideo
+          src={videoResolvedSrc}
+          trimBefore={trimBefore}
+          trimAfter={trimAfter}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: `${objectPositionX}% 50%`,
+          }}
+        />
       </AbsoluteFill>
 
       {/* subtle bottom scrim for caption legibility */}
