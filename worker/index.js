@@ -7,6 +7,12 @@ const { assembleFacelessVideo } = require('./processors/videoProcessor');
 const { processRenderJob } = require('./processors/renderProcessor');
 const { processUploadJob } = require('./processors/uploadProcessor');
 const { getTranscript } = require('./processors/transcriptProcessor');
+const { createLimit } = require('./lib/limit');
+
+// Heavy jobs (download + ffmpeg + upload) queue behind this limit so a burst
+// of requests can't run unbounded concurrent pipelines. Requests still get
+// their 202 immediately.
+const jobLimit = createLimit(Math.max(1, Number(process.env.MAX_CONCURRENT_JOBS) || 2));
 
 const app = express();
 
@@ -53,7 +59,7 @@ app.post('/process', (req, res) => {
   // update + callback). The extra catch here is a last line of defense so a
   // bug in the processor can never take down the server.
   setImmediate(() => {
-    processClipJob({ jobId, sourceUrl, topic, platforms }).catch((err) => {
+    jobLimit(() => processClipJob({ jobId, sourceUrl, topic, platforms })).catch((err) => {
       console.error(`[process] job ${jobId} crashed unexpectedly:`, err);
     });
   });
@@ -79,7 +85,7 @@ app.post('/assemble', (req, res) => {
   res.status(202).json({ accepted: true, videoId });
 
   setImmediate(() => {
-    assembleFacelessVideo({ videoId, scenes, voiceoverUrl }).catch((err) => {
+    jobLimit(() => assembleFacelessVideo({ videoId, scenes, voiceoverUrl })).catch((err) => {
       console.error(`[assemble] video ${videoId} crashed unexpectedly:`, err);
     });
   });
@@ -126,7 +132,7 @@ app.post('/render', (req, res) => {
   res.status(202).json({ accepted: true, clipId });
 
   setImmediate(() => {
-    processRenderJob({ clipId, table, hook, captions, gradient, accent, key, url, start, end, duration }).catch((err) => {
+    jobLimit(() => processRenderJob({ clipId, table, hook, captions, gradient, accent, key, url, start, end, duration })).catch((err) => {
       console.error(`[render] ${clipId} crashed unexpectedly:`, err);
     });
   });
@@ -151,7 +157,7 @@ app.post('/process-upload', (req, res) => {
   res.status(202).json({ accepted: true, jobId });
 
   setImmediate(() => {
-    processUploadJob({ jobId, key, count, topic }).catch((err) => {
+    jobLimit(() => processUploadJob({ jobId, key, count, topic })).catch((err) => {
       console.error(`[process-upload] job ${jobId} crashed unexpectedly:`, err);
     });
   });

@@ -3,14 +3,18 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { Readable } = require('stream');
+const { pipeline } = require('stream/promises');
 
 const { getDuration } = require('../lib/ffmpeg');
 const { uploadFile } = require('../lib/r2Upload');
 const { getClient, updateClipJob, postCallback } = require('../lib/supabaseCallback');
 const { findLoudestSegments, tryTranscribe, captionForSegment, renderClip } = require('./clipProcessor');
+const { createLimit } = require('../lib/limit');
 
 const UPLOAD_BUCKET = process.env.UPLOAD_BUCKET || 'uploads';
 const DEFAULT_GRADIENT = 'linear-gradient(160deg, #14213d 0%, #0a0e1a 55%, #0e1b33 100%)';
+const RENDER_CONCURRENCY = 2;
 
 async function reportProgress(jobId, progress) {
   try {
@@ -21,15 +25,16 @@ async function reportProgress(jobId, progress) {
 }
 
 async function downloadUploadedFile(key, destPath) {
-  const supabase = getClient();
-  const { data, error } = await supabase.storage.from(UPLOAD_BUCKET).download(key);
-  if (error || !data) {
-    throw new Error(
-      `Could not download uploaded file (${UPLOAD_BUCKET}/${key}): ${error ? error.message : 'no data'}`
-    );
+  // Stream straight to disk (constant memory) instead of buffering the whole
+  // upload in RAM — uploads can be hundreds of MB.
+  const url = `${process.env.SUPABASE_URL.replace(/\/$/, '')}/storage/v1/object/${UPLOAD_BUCKET}/${key}`;
+  const res = await fetch(url, {
+    headers: { authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}` },
+  });
+  if (!res.ok || !res.body) {
+    throw new Error(`Could not download uploaded file (${UPLOAD_BUCKET}/${key}): HTTP ${res.status}`);
   }
-  const buffer = Buffer.from(await data.arrayBuffer());
-  fs.writeFileSync(destPath, buffer);
+  await pipeline(Readable.fromWeb(res.body), fs.createWriteStream(destPath));
 }
 
 function formatDuration(seconds) {
@@ -63,38 +68,47 @@ async function processUploadJob({ jobId, key, count, topic }) {
     const segments = await findLoudestSegments(sourcePath, duration, n);
     await reportProgress(jobId, 30);
 
-    const transcription = await tryTranscribe(sourcePath, tmpDir);
+    // Transcription is unused when a topic override is set, and only needs
+    // the selected segments' audio.
+    const transcription = topic ? null : await tryTranscribe(sourcePath, tmpDir, segments);
     await reportProgress(jobId, 40);
 
     const supabase = getClient();
+    const limit = createLimit(RENDER_CONCURRENCY);
     let inserted = 0;
-    for (let i = 0; i < segments.length; i++) {
-      const segment = segments[i];
-      const caption = captionForSegment(transcription, segment, topic);
-      const outputPath = path.join(tmpDir, `clip_${i + 1}.mp4`);
+    let completed = 0;
 
-      console.log(`[upload] job ${jobId}: rendering clip ${i + 1}/${segments.length}`);
-      await renderClip(sourcePath, outputPath, segment, caption, i);
-      const r2Url = await uploadFile(outputPath, `clips/${jobId}/${i + 1}.mp4`);
+    await Promise.all(
+      segments.map((segment, i) =>
+        limit(async () => {
+          const caption = captionForSegment(transcription, segment, topic);
+          const outputPath = path.join(tmpDir, `clip_${i + 1}.mp4`);
 
-      const { error: insertError } = await supabase.from('clips').insert({
-        job_id: jobId,
-        title: caption || topic || `Clip ${i + 1}`,
-        hook: caption || topic || null,
-        captions: caption ? [caption] : [],
-        duration: formatDuration(segment.duration),
-        start_seconds: Math.round(segment.start),
-        end_seconds: Math.round(segment.start + segment.duration),
-        r2_url: r2Url,
-        bg_gradient: DEFAULT_GRADIENT,
-      });
-      if (insertError) {
-        console.error(`[upload] job ${jobId}: clip ${i + 1} insert failed:`, insertError.message);
-      } else {
-        inserted += 1;
-      }
-      await reportProgress(jobId, 40 + Math.round(((i + 1) / segments.length) * 55));
-    }
+          console.log(`[upload] job ${jobId}: rendering clip ${i + 1}/${segments.length}`);
+          await renderClip(sourcePath, outputPath, segment, caption, i);
+          const r2Url = await uploadFile(outputPath, `clips/${jobId}/${i + 1}.mp4`);
+
+          const { error: insertError } = await supabase.from('clips').insert({
+            job_id: jobId,
+            title: caption || topic || `Clip ${i + 1}`,
+            hook: caption || topic || null,
+            captions: caption ? [caption] : [],
+            duration: formatDuration(segment.duration),
+            start_seconds: Math.round(segment.start),
+            end_seconds: Math.round(segment.start + segment.duration),
+            r2_url: r2Url,
+            bg_gradient: DEFAULT_GRADIENT,
+          });
+          if (insertError) {
+            console.error(`[upload] job ${jobId}: clip ${i + 1} insert failed:`, insertError.message);
+          } else {
+            inserted += 1;
+          }
+          completed += 1;
+          await reportProgress(jobId, 40 + Math.round((completed / segments.length) * 55));
+        })
+      )
+    );
 
     await updateClipJob(jobId, { status: 'done', progress: 100 });
     await postCallback({ jobId, status: 'done' });

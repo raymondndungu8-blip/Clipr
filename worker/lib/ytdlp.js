@@ -61,12 +61,17 @@ async function fetchAutoCaptions(videoId, tmpDir, { timeoutMs = 25000 } = {}) {
  * --download-sections), far cheaper than pulling the whole file when we only
  * need one clip's worth of footage.
  */
-async function downloadSegment(sourceUrl, startSeconds, endSeconds, outputPath, { timeoutMs = 3 * 60 * 1000 } = {}) {
-  const section = `*${Math.max(0, Math.floor(startSeconds))}-${Math.ceil(endSeconds)}`;
+async function downloadSegment(sourceUrl, startSeconds, endSeconds, outputPath, { timeoutMs = 3 * 60 * 1000, padSeconds = 0 } = {}) {
+  // With padding the caller re-encodes anyway and trims precisely itself, so
+  // skip --force-keyframes-at-cuts (a yt-dlp-side re-encode) — grab a few
+  // extra seconds around the window instead and cut on keyframes only.
+  const pad = Math.max(0, padSeconds);
+  const paddedStart = Math.max(0, Math.floor(startSeconds - pad));
+  const section = `*${paddedStart}-${Math.ceil(endSeconds + pad)}`;
   const args = [
     '-f', 'mp4[height<=1080]/best',
     '--download-sections', section,
-    '--force-keyframes-at-cuts',
+    ...(pad > 0 ? [] : ['--force-keyframes-at-cuts']),
     '--max-filesize', '300m',
     '--no-playlist',
     '-o', outputPath,
@@ -77,6 +82,8 @@ async function downloadSegment(sourceUrl, startSeconds, endSeconds, outputPath, 
     const tail = (result.stderr || result.stdout || '').slice(-2000);
     throw new Error(`yt-dlp segment download exited with code ${result.code}: ${tail}`);
   }
+  // Where the requested start actually sits inside the downloaded file.
+  return { offsetSeconds: startSeconds - paddedStart };
 }
 
 module.exports = { fetchAutoCaptions, downloadSegment };

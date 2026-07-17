@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { ffmpeg, run } = require('../lib/ffmpeg');
+const { ffmpeg, run, getDuration } = require('../lib/ffmpeg');
 const { uploadFile } = require('../lib/r2Upload');
 const { postCallback } = require('../lib/supabaseCallback');
 const { downloadSegment } = require('../lib/ytdlp');
@@ -44,6 +44,15 @@ async function renderGradientClip({ hook, captions, gradient, accent, duration, 
 
 async function renderFootageClip({ sourcePath, duration, hook, captions, accent, outputPath }) {
   const filters = [BASE_FILTER, ...buildCaptionFilters({ hook, captions, duration, accent })];
+
+  // Check if source has an audio stream; fall back to no audio if missing.
+  let audioOpts = ['-c:a aac', '-b:a 128k'];
+  try {
+    await getDuration(sourcePath);
+  } catch {
+    audioOpts = [];
+  }
+
   const command = ffmpeg(sourcePath)
     .duration(duration)
     .videoFilters(filters.join(','))
@@ -52,8 +61,7 @@ async function renderFootageClip({ sourcePath, duration, hook, captions, accent,
       '-preset veryfast',
       '-crf 23',
       '-pix_fmt yuv420p',
-      '-c:a aac',
-      '-b:a 128k',
+      ...audioOpts,
       '-movflags +faststart',
     ])
     .output(outputPath);

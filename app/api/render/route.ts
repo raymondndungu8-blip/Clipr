@@ -1,19 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { guardRoute } from "@/lib/apiGuard";
-import { renderAndUpload, renderSourceAndUpload } from "@/lib/render";
 import { youtubeIdFromUrl } from "@/lib/youtube";
 
-// Rendering runs Node + Chromium (Remotion) + yt-dlp — local dev / a Node host
-// (the worker), NOT Vercel serverless. On Vercel this route returns a clean
-// error (CLIPR_RENDER_SCRIPT unset). Keep maxDuration within free-plan limits.
 export const maxDuration = 60;
 
 const RenderSchema = z
   .object({
-    clipId: z.uuid().optional(),
-    videoId: z.uuid().optional(),
-    /** Caption highlight colour from the chosen caption style. */
+    clipId: z.string().optional(),
+    videoId: z.string().optional(),
     accent: z
       .string()
       .regex(/^#[0-9a-fA-F]{6}$/)
@@ -26,7 +21,6 @@ const RenderSchema = z
 const DEFAULT_GRADIENT =
   "linear-gradient(160deg, #14213d 0%, #0a0e1a 55%, #0e1b33 100%)";
 
-/** Parse "0:24" (clips) or "30s"/"45" (faceless videos) into whole seconds. */
 function parseDurationSeconds(input: string | null | undefined): number | undefined {
   if (!input) return undefined;
   const mmss = /^(\d+):(\d{1,2})$/.exec(input.trim());
@@ -74,53 +68,41 @@ export async function POST(req: NextRequest) {
     const key = `videos/${video.id}.mp4`;
 
     const workerUrl = process.env.WORKER_URL;
-    if (workerUrl && !workerUrl.includes("your-worker")) {
-      try {
-        const res = await fetch(`${workerUrl}/render`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-worker-secret": process.env.WORKER_SECRET ?? "",
-          },
-          body: JSON.stringify({
-            clipId: video.id,
-            table: "faceless_videos",
-            hook,
-            captions,
-            gradient,
-            accent,
-            key,
-            duration: parseDurationSeconds(video.duration),
-          }),
-        });
-        if (!res.ok && res.status !== 202) {
-          throw new Error(`worker responded ${res.status}`);
-        }
-        return NextResponse.json({ status: "rendering" });
-      } catch (err) {
-        console.error("[api/render] faceless dispatch failed:", err);
-        return NextResponse.json(
-          { error: "Couldn't reach the render service. Try again." },
-          { status: 502 }
-        );
-      }
+    if (!workerUrl || workerUrl.includes("your-worker")) {
+      return NextResponse.json(
+        { error: "Render service not configured" },
+        { status: 500 }
+      );
     }
 
-    // Local dev fallback: render in-process.
     try {
-      const url = await renderAndUpload({
-        compositionId: "CaptionClip",
-        props: { hook, captions, gradient, accent },
-        key,
+      const res = await fetch(`${workerUrl}/render`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-worker-secret": process.env.WORKER_SECRET ?? "",
+        },
+        body: JSON.stringify({
+          clipId: video.id,
+          table: "faceless_videos",
+          hook,
+          captions,
+          gradient,
+          accent,
+          key,
+          duration: parseDurationSeconds(video.duration),
+        }),
       });
-      await supabase
-        .from("faceless_videos")
-        .update({ r2_url: url })
-        .eq("id", video.id);
-      return NextResponse.json({ url });
+      if (!res.ok && res.status !== 202) {
+        throw new Error(`worker responded ${res.status}`);
+      }
+      return NextResponse.json({ status: "rendering" });
     } catch (err) {
-      console.error("[api/render] faceless render failed:", err);
-      return NextResponse.json({ error: "Render failed" }, { status: 500 });
+      console.error("[api/render] faceless dispatch failed:", err);
+      return NextResponse.json(
+        { error: "Couldn't reach the render service. Try again." },
+        { status: 502 }
+      );
     }
   }
 
@@ -135,7 +117,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Clip not found" }, { status: 404 });
   }
 
-  // Look up the source URL from the parent job.
   const { data: job } = await supabase
     .from("clip_jobs")
     .select("source_url")
@@ -148,83 +129,47 @@ export async function POST(req: NextRequest) {
     typeof clip.end_seconds === "number" &&
     clip.end_seconds > clip.start_seconds;
 
-  // Production: dispatch to the deployed render worker (Fly). It renders +
-  // uploads and writes clip.r2_url when done; the client polls for it. Real
-  // footage is used when there's a YouTube segment; otherwise (or if the
-  // download is blocked) the worker renders the AI captions over a gradient, so
-  // there's always a captioned, downloadable MP4.
   const workerUrl = process.env.WORKER_URL;
-  if (workerUrl && !workerUrl.includes("your-worker")) {
-    const body: Record<string, unknown> = {
-      clipId: clip.id,
-      hook: clip.hook ?? "",
-      captions: clip.captions ?? [],
-      gradient: clip.bg_gradient ?? undefined,
-      accent,
-      key: `clips/${clip.id}.mp4`,
-      duration: parseDurationSeconds(clip.duration),
-    };
-    if (youtubeId && hasSegment && job?.source_url) {
-      body.url = job.source_url;
-      body.start = clip.start_seconds;
-      body.end = clip.end_seconds;
-    }
-    try {
-      const res = await fetch(`${workerUrl}/render`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-worker-secret": process.env.WORKER_SECRET ?? "",
-        },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok && res.status !== 202) {
-        throw new Error(`worker responded ${res.status}`);
-      }
-      return NextResponse.json({ status: "rendering" });
-    } catch (err) {
-      console.error("[api/render] worker dispatch failed:", err);
-      return NextResponse.json(
-        { error: "Couldn't reach the render service. Try again." },
-        { status: 502 }
-      );
-    }
+  if (!workerUrl || workerUrl.includes("your-worker")) {
+    return NextResponse.json(
+      { error: "Render service not configured" },
+      { status: 500 }
+    );
   }
 
-  // Local dev (no worker): render in-process and return the URL.
+  const renderBody: Record<string, unknown> = {
+    clipId: clip.id,
+    hook: clip.hook ?? "",
+    captions: clip.captions ?? [],
+    gradient: clip.bg_gradient ?? undefined,
+    accent,
+    key: `clips/${clip.id}.mp4`,
+    duration: parseDurationSeconds(clip.duration),
+  };
+  if (youtubeId && hasSegment && job?.source_url) {
+    renderBody.url = job.source_url;
+    renderBody.start = clip.start_seconds;
+    renderBody.end = clip.end_seconds;
+  }
+
   try {
-    let url: string;
-
-    if (youtubeId && hasSegment && job?.source_url) {
-      // Real footage: download the YouTube segment + auto-captions and render it.
-      url = await renderSourceAndUpload({
-        url: job.source_url,
-        startSeconds: clip.start_seconds!,
-        endSeconds: clip.end_seconds!,
-        id: clip.id,
-        key: `clips/${clip.id}.mp4`,
-        hook: clip.hook ?? "",
-      });
-    } else {
-      // Fallback: styled caption clip over a gradient.
-      url = await renderAndUpload({
-        compositionId: "CaptionClip",
-        props: {
-          hook: clip.hook ?? "",
-          captions: clip.captions ?? [],
-          gradient:
-            clip.bg_gradient ??
-            "linear-gradient(160deg, #14213d 0%, #0a0e1a 55%, #0e1b33 100%)",
-          accent,
-        },
-        key: `clips/${clip.id}.mp4`,
-      });
+    const res = await fetch(`${workerUrl}/render`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-worker-secret": process.env.WORKER_SECRET ?? "",
+      },
+      body: JSON.stringify(renderBody),
+    });
+    if (!res.ok && res.status !== 202) {
+      throw new Error(`worker responded ${res.status}`);
     }
-
-    await supabase.from("clips").update({ r2_url: url }).eq("id", clip.id);
-    return NextResponse.json({ url });
+    return NextResponse.json({ status: "rendering" });
   } catch (err) {
-    console.error("[api/render] render failed:", err);
-    return NextResponse.json({ error: "Render failed" }, { status: 500 });
+    console.error("[api/render] worker dispatch failed:", err);
+    return NextResponse.json(
+      { error: "Couldn't reach the render service. Try again." },
+      { status: 502 }
+    );
   }
 }

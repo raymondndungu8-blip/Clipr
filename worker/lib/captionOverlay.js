@@ -1,26 +1,19 @@
 'use strict';
 
-const { sanitizeCaption } = require('../processors/clipProcessor');
+function escapeDrawtext(val) {
+  return String(val || '').replace(/'/g, "'\\''").replace(/\n/g, ' ');
+}
 
-/** First hex colour found in a CSS gradient/color string, for an ffmpeg `color=` source. */
 function firstHexColor(cssColor, fallback = '#0a0e1a') {
   const match = String(cssColor || '').match(/#[0-9a-fA-F]{6}/);
   return match ? match[0] : fallback;
 }
 
-/**
- * Build a chained ffmpeg drawtext filter string: the hook shown near the top
- * for the first few seconds, then the caption chunks cycled evenly across
- * the clip's duration (mirrors the client-side preview's 1.1s caption
- * cycling in components/VideoPreview.tsx). Reuses sanitizeCaption so burned-in
- * text is restricted to the same drawtext-safe character set already proven
- * out in clipProcessor.js (no colons/quotes to escape).
- */
 function buildCaptionFilters({ hook, captions, duration, accent }) {
   const filters = [];
   const safeAccent = /^#[0-9a-fA-F]{6}$/.test(accent || '') ? accent : '#22e06a';
 
-  const safeHook = sanitizeCaption(hook || '');
+  const safeHook = escapeDrawtext(hook);
   if (safeHook) {
     const hookEnd = Math.min(3, duration).toFixed(2);
     filters.push(
@@ -29,7 +22,7 @@ function buildCaptionFilters({ hook, captions, duration, accent }) {
     );
   }
 
-  const chunks = (captions || []).map((c) => sanitizeCaption(c)).filter(Boolean);
+  const chunks = (captions || []).map((c) => escapeDrawtext(c)).filter(Boolean);
   if (chunks.length > 0) {
     const per = duration / chunks.length;
     chunks.forEach((chunk, i) => {

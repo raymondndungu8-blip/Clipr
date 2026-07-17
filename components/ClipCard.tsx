@@ -42,7 +42,7 @@ export default function ClipCard({
 
   // Poll the clip row until the worker writes the rendered MP4 URL.
   async function pollForRender(): Promise<string | null> {
-    const deadline = Date.now() + 5 * 60 * 1000;
+    const deadline = Date.now() + 10 * 60 * 1000;
     while (Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 5000));
       const { data } = await getSupabase()
