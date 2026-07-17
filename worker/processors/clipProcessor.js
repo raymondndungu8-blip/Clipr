@@ -8,7 +8,7 @@ const { ffmpeg, ffmpegPath, run, getDuration } = require('../lib/ffmpeg');
 const { uploadFile } = require('../lib/r2Upload');
 const { updateClipJob, postCallback } = require('../lib/supabaseCallback');
 const { spawnCapture } = require('../lib/proc');
-const { downloadSegment } = require('../lib/ytdlp');
+const { downloadSegment, proxyArgs } = require('../lib/ytdlp');
 const { createLimit } = require('../lib/limit');
 
 const CLIP_LENGTH = 30; // seconds per clip
@@ -25,6 +25,7 @@ const RENDER_CONCURRENCY = 2;
 // ---------------------------------------------------------------------------
 async function downloadSource(sourceUrl, outputPath) {
   const args = [
+    ...proxyArgs(),
     '-f', 'mp4[height<=1080]/best',
     '--max-filesize', '500m',
     '--no-playlist',
@@ -49,6 +50,7 @@ async function downloadSource(sourceUrl, outputPath) {
  */
 async function downloadAudio(sourceUrl, outputPath) {
   const args = [
+    ...proxyArgs(),
     '-f', 'bestaudio[ext=m4a]/bestaudio/best',
     '--max-filesize', '200m',
     '--no-playlist',

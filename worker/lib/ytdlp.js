@@ -6,6 +6,16 @@ const { spawnCapture } = require('./proc');
 const { parseAutoVtt } = require('./vtt');
 
 /**
+ * Return --proxy args for yt-dlp if YT_DLP_PROXY is configured.
+ * Callers spread this into the args array before the source URL.
+ */
+function proxyArgs() {
+  const proxy = process.env.YT_DLP_PROXY;
+  if (!proxy || proxy.includes('...')) return [];
+  return ['--proxy', proxy];
+}
+
+/**
  * Fetch YouTube's auto-generated captions for a video WITHOUT downloading
  * the video itself (--skip-download), parse them into {start, dur, text}
  * segments. Returns null on any failure (no captions, network/bot-wall
@@ -16,6 +26,7 @@ async function fetchAutoCaptions(videoId, tmpDir, { timeoutMs = 25000 } = {}) {
   const url = `https://www.youtube.com/watch?v=${videoId}`;
   const outBase = path.join(tmpDir, 'captions');
   const args = [
+    ...proxyArgs(),
     '--skip-download',
     '--write-auto-subs',
     '--sub-langs', 'en.*,en',
@@ -69,6 +80,7 @@ async function downloadSegment(sourceUrl, startSeconds, endSeconds, outputPath, 
   const paddedStart = Math.max(0, Math.floor(startSeconds - pad));
   const section = `*${paddedStart}-${Math.ceil(endSeconds + pad)}`;
   const args = [
+    ...proxyArgs(),
     '-f', 'mp4[height<=1080]/best',
     '--download-sections', section,
     ...(pad > 0 ? [] : ['--force-keyframes-at-cuts']),
@@ -86,4 +98,4 @@ async function downloadSegment(sourceUrl, startSeconds, endSeconds, outputPath, 
   return { offsetSeconds: startSeconds - paddedStart };
 }
 
-module.exports = { fetchAutoCaptions, downloadSegment };
+module.exports = { fetchAutoCaptions, downloadSegment, proxyArgs };
