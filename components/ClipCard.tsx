@@ -44,7 +44,7 @@ export default function ClipCard({
   async function pollForRender(): Promise<string | null> {
     const deadline = Date.now() + 10 * 60 * 1000;
     while (Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, 5000));
+      await new Promise((r) => setTimeout(r, 2000));
       const { data } = await getSupabase()
         .from("clips")
         .select("r2_url")
