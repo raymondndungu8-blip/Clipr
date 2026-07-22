@@ -11,8 +11,8 @@ const { downloadSegment } = require('../lib/ytdlp');
 const { buildCaptionFilters, firstHexColor } = require('../lib/captionOverlay');
 const { BASE_FILTER } = require('./clipProcessor');
 
-const SEGMENT_DOWNLOAD_TIMEOUT_MS = 3 * 60 * 1000;
-const RENDER_TIMEOUT_MS = 5 * 60 * 1000;
+const SEGMENT_DOWNLOAD_TIMEOUT_MS = 60 * 1000;
+const RENDER_TIMEOUT_MS = 3 * 60 * 1000;
 const DEFAULT_DURATION_S = 30;
 
 /** No explicit duration is available for the caption-over-gradient case unless
@@ -33,8 +33,8 @@ async function renderGradientClip({ hook, captions, gradient, accent, duration, 
     .videoFilters(filters.length ? filters.join(',') : 'null')
     .outputOptions([
       '-c:v libx264',
-      '-preset veryfast',
-      '-crf 23',
+      '-preset ultrafast',
+      '-crf 28',
       '-pix_fmt yuv420p',
       '-movflags +faststart',
     ])
@@ -58,8 +58,8 @@ async function renderFootageClip({ sourcePath, duration, hook, captions, accent,
     .videoFilters(filters.join(','))
     .outputOptions([
       '-c:v libx264',
-      '-preset veryfast',
-      '-crf 23',
+      '-preset ultrafast',
+      '-crf 26',
       '-pix_fmt yuv420p',
       ...audioOpts,
       '-movflags +faststart',

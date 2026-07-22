@@ -252,8 +252,16 @@ export async function POST(req: NextRequest) {
       ? `the video at ${url}${topic ? ` (about: ${topic})` : ""}`
       : `the topic "${topic}"`;
 
+    const videoDuration = transcript && transcript.length > 0
+      ? Math.round(Math.max(...transcript.map((s) => s.start + s.dur)))
+      : undefined;
+
     const focus = topic
       ? `\n\nThe creator wants clips about: "${topic}". Prioritise moments matching that.`
+      : "";
+
+    const durationHint = videoDuration
+      ? `\n\nThe total video is ${formatDuration(videoDuration)} long. Spread your ${count} clips EVENLY across the full duration — do NOT cluster them near the beginning. Each clip must start at a DIFFERENT timestamp and cover a COMPLETELY different moment/scene from the others.`
       : "";
 
     const transcriptBlock = transcript
@@ -315,6 +323,35 @@ Return ONLY a JSON array of exactly ${count} objects, sorted by viralityScore de
         clip.startSeconds = snapped.startSeconds;
         clip.endSeconds = snapped.endSeconds;
         clip.duration = formatDuration(snapped.endSeconds - snapped.startSeconds);
+      }
+    }
+
+    // 2c. Enforce non-overlapping clips spread across the video.
+    clipsJson.sort((a, b) => (a.startSeconds ?? 0) - (b.startSeconds ?? 0));
+    const minGap = 5;
+    const videoEnd = transcript && transcript.length > 0
+      ? Math.max(...transcript.map((s) => s.start + s.dur))
+      : 600;
+    for (let i = 0; i < clipsJson.length; i++) {
+      const clip = clipsJson[i];
+      if (typeof clip.startSeconds !== "number") continue;
+      if (i > 0) {
+        const prev = clipsJson[i - 1];
+        if (typeof prev.endSeconds === "number" && clip.startSeconds < prev.endSeconds + minGap) {
+          clip.startSeconds = prev.endSeconds + minGap;
+          clip.endSeconds = Math.min(
+            clip.startSeconds + (clip.endSeconds ?? clip.startSeconds + 30),
+            videoEnd
+          );
+          clip.duration = formatDuration(clip.endSeconds - clip.startSeconds);
+        }
+      }
+      if (i < clipsJson.length - 1) {
+        const next = clipsJson[i + 1];
+        if (typeof next.startSeconds === "number" && (clip.endSeconds ?? 0) > next.startSeconds - minGap) {
+          clip.endSeconds = Math.max(clip.startSeconds + 5, next.startSeconds - minGap);
+          clip.duration = formatDuration(clip.endSeconds - clip.startSeconds);
+        }
       }
     }
 
