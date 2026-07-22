@@ -1,7 +1,10 @@
+import Anthropic from "@anthropic-ai/sdk";
+
 // LLM helper — talks to an OpenAI-compatible chat-completions endpoint.
-// Defaults to NVIDIA NIM (https://integrate.api.nvidia.com/v1), which offers a
-// free tier and hosts Llama / Qwen / Nemotron / etc. Swap LLM_BASE_URL +
-// LLM_MODEL + the matching key to use any other OpenAI-compatible provider.
+// Falls back to Anthropic SDK when the OpenAI endpoint fails (e.g. expired
+// NVIDIA key) and ANTHROPIC_API_KEY is available.
+// Defaults to NVIDIA NIM (https://integrate.api.nvidia.com/v1), free tier.
+// Swap LLM_BASE_URL + LLM_MODEL + the matching key to use any other provider.
 // (File kept as lib/anthropic.ts so existing route imports don't change.)
 
 // Read provider config at CALL time, not module load. Module-level consts get
@@ -13,21 +16,20 @@ function getBaseUrl(): string {
     process.env.LLM_BASE_URL || "https://integrate.api.nvidia.com/v1"
   ).trim();
 }
-// Default to a fast, widely-available model so clip generation returns quickly.
-// Override with LLM_MODEL to use a larger model if you prefer accuracy over speed.
-function getModel(): string {
+
+function getOpenAIModel(): string {
   return (process.env.LLM_MODEL || "meta/llama-3.1-8b-instruct").trim();
 }
 
+function getAnthropicModel(): string {
+  return process.env.ANTHROPIC_MODEL || "claude-sonnet-4-20250514";
+}
+
 function getApiKey(): string {
-  // Prefer LLM_API_KEY so switching providers (e.g. to Groq) actually takes
-  // effect even when the old NVIDIA_API_KEY is still present in the env.
-  // .trim() removes any stray whitespace/newline from a pasted secret, which
-  // otherwise makes the Authorization header invalid (401 Unauthorized).
   const key = (process.env.LLM_API_KEY || process.env.NVIDIA_API_KEY || "").trim();
   if (!key || key.includes("...")) {
     throw new Error(
-      "LLM is not configured — set LLM_API_KEY (or NVIDIA_API_KEY) in the environment."
+      "LLM is not configured — set LLM_API_KEY or NVIDIA_API_KEY in the environment."
     );
   }
   return key;
@@ -66,7 +68,43 @@ export async function generateJSON<T>(opts: {
   maxTokens?: number;
   timeoutMs?: number;
 }): Promise<T> {
-  // Bound the call so a slow or overloaded model can't hang the whole request.
+  const hasOpenAIKey =
+    (process.env.LLM_API_KEY || process.env.NVIDIA_API_KEY || "").trim().length > 0 &&
+    !(process.env.LLM_API_KEY || process.env.NVIDIA_API_KEY || "").includes("...");
+
+  const hasAnthropicKey =
+    (process.env.ANTHROPIC_API_KEY || "").trim().length > 0 &&
+    !process.env.ANTHROPIC_API_KEY!.includes("...");
+
+  // Try OpenAI-compatible first (LLM_API_KEY or NVIDIA_API_KEY).
+  if (hasOpenAIKey) {
+    try {
+      return await generateJSONOpenAI<T>(opts);
+    } catch (err) {
+      if (hasAnthropicKey) {
+        console.warn("[anthropic] OpenAI endpoint failed, falling back to Anthropic:", String(err).slice(0, 200));
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  // Fall back to Anthropic SDK.
+  if (hasAnthropicKey) {
+    return generateJSONAnthropic<T>(opts);
+  }
+
+  throw new Error(
+    "LLM is not configured — set LLM_API_KEY, NVIDIA_API_KEY, or ANTHROPIC_API_KEY in the environment."
+  );
+}
+
+async function generateJSONOpenAI<T>(opts: {
+  system: string;
+  prompt: string;
+  maxTokens?: number;
+  timeoutMs?: number;
+}): Promise<T> {
   const timeoutMs =
     opts.timeoutMs ?? (Number(process.env.LLM_TIMEOUT_MS) || 45000);
   const controller = new AbortController();
@@ -81,12 +119,11 @@ export async function generateJSON<T>(opts: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: getModel(),
+        model: getOpenAIModel(),
         messages: [
           { role: "system", content: opts.system },
           { role: "user", content: opts.prompt },
         ],
-        // Lower temperature = faster, more deterministic, valid JSON.
         temperature: 0.6,
         top_p: 0.9,
         max_tokens: opts.maxTokens ?? 4096,
@@ -110,6 +147,40 @@ export async function generateJSON<T>(opts: {
 
   const data = (await res.json()) as ChatCompletion;
   const text = data.choices?.[0]?.message?.content ?? "";
+  const cleaned = cleanModelOutput(text);
+
+  try {
+    return JSON.parse(cleaned) as T;
+  } catch {
+    throw new Error(
+      `LLM returned invalid JSON (first 200 chars): ${cleaned.slice(0, 200)}`
+    );
+  }
+}
+
+async function generateJSONAnthropic<T>(opts: {
+  system: string;
+  prompt: string;
+  maxTokens?: number;
+}): Promise<T> {
+  const client = new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY || "",
+    maxRetries: 2,
+  });
+
+  const response = await client.messages.create({
+    model: getAnthropicModel(),
+    max_tokens: opts.maxTokens ?? 4096,
+    system: opts.system,
+    messages: [{ role: "user", content: opts.prompt }],
+    temperature: 0.6,
+  });
+
+  const text = response.content
+    .filter((b) => b.type === "text")
+    .map((b) => (b as { text: string }).text)
+    .join("\n");
+
   const cleaned = cleanModelOutput(text);
 
   try {
