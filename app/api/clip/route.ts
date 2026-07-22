@@ -96,7 +96,7 @@ async function fetchTranscript(
 
 /** Condense a transcript into "[s] text" lines within a character budget.
  *  A tighter budget = a smaller prompt = a much faster model response. */
-function condenseTranscript(segments: TranscriptSegment[], maxChars = 9000) {
+function condenseTranscript(segments: TranscriptSegment[], maxChars = 4000) {
   const lines: string[] = [];
   let total = 0;
   for (const s of segments) {
@@ -281,7 +281,7 @@ For each clip return an object with:
 - "scoreReason": one short sentence on why it scored that
 
 Return ONLY a JSON array of exactly ${count} objects, sorted by viralityScore descending. No markdown, no commentary.`,
-      maxTokens: Math.min(Math.max(2200, count * 750 + 700), 14000),
+      maxTokens: Math.min(Math.max(1024, count * 350 + 300), 4096),
     });
 
     if (!Array.isArray(clipsJson) || clipsJson.length === 0) {
