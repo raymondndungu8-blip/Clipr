@@ -6,7 +6,7 @@ const path = require('path');
 
 const { ffmpeg, run, getDuration } = require('../lib/ffmpeg');
 const { uploadFile } = require('../lib/r2Upload');
-const { postCallback } = require('../lib/supabaseCallback');
+const { updateJobStatus, postCallback } = require('../lib/supabaseCallback');
 const { downloadSegment } = require('../lib/ytdlp');
 const { buildCaptionFilters, firstHexColor } = require('../lib/captionOverlay');
 const { BASE_FILTER } = require('./clipProcessor');
@@ -111,14 +111,23 @@ async function processRenderJob({ clipId, table, hook, captions, gradient, accen
 
     const r2Url = await uploadFile(outputPath, key || `clips/${clipId}.mp4`);
 
-    if (isFaceless) await postCallback({ videoId: clipId, status: 'done', r2Url });
-    else await postCallback({ clipId, status: 'done', r2Url });
+    if (isFaceless) {
+      await updateJobStatus('faceless_videos', clipId, { r2_url: r2Url, status: 'done' });
+      await postCallback({ videoId: clipId, status: 'done', r2Url }).catch(() => {});
+    } else {
+      await updateJobStatus('clips', clipId, { r2_url: r2Url });
+      await postCallback({ clipId, status: 'done', r2Url }).catch(() => {});
+    }
     console.log(`[render] ${clipId}: done -> ${r2Url}`);
   } catch (err) {
     const message = (err && err.message ? err.message : String(err)).slice(0, 1000);
     console.error(`[render] ${clipId} failed:`, message);
-    if (isFaceless) await postCallback({ videoId: clipId, status: 'failed', error: message });
-    else await postCallback({ clipId, status: 'failed', error: message });
+    if (isFaceless) {
+      await updateJobStatus('faceless_videos', clipId, { status: 'failed', error_message: message });
+      await postCallback({ videoId: clipId, status: 'failed', error: message }).catch(() => {});
+    } else {
+      await postCallback({ clipId, status: 'failed', error: message }).catch(() => {});
+    }
   } finally {
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
