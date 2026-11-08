@@ -120,10 +120,42 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- 8. Realtime on job tables (frontend subscribes for status updates)
+-- 8. Movie recognition jobs
+CREATE TABLE movie_recognition_jobs (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  upload_key    TEXT NOT NULL,
+  hint          TEXT,
+  status        TEXT NOT NULL DEFAULT 'pending'
+                CHECK (status IN ('pending','processing','done','failed')),
+  matches       JSONB,
+  error_message TEXT,
+  progress      INTEGER NOT NULL DEFAULT 0 CHECK (progress BETWEEN 0 AND 100),
+  created_at    TIMESTAMPTZ DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE movie_recognition_jobs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "own_movie_jobs" ON movie_recognition_jobs FOR ALL USING (auth.uid() = user_id);
+CREATE INDEX idx_movie_recognition_jobs_user ON movie_recognition_jobs(user_id);
+
+-- 9. Auto-update updated_at column
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_movie_recognition_jobs_updated_at
+  BEFORE UPDATE ON movie_recognition_jobs
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- 10. Realtime on job tables (frontend subscribes for status updates)
 ALTER PUBLICATION supabase_realtime ADD TABLE clip_jobs;
 ALTER PUBLICATION supabase_realtime ADD TABLE faceless_videos;
 ALTER PUBLICATION supabase_realtime ADD TABLE posts;
+ALTER PUBLICATION supabase_realtime ADD TABLE movie_recognition_jobs;
 
 -- ---------------------------------------------------------------------------
 -- INCREMENTAL MIGRATION — safe to paste into the Supabase SQL editor against

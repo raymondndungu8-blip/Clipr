@@ -11,6 +11,7 @@ import {
   LogOut,
   User,
   Link2,
+  Film,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import CliprLogo from "@/components/CliprLogo";
@@ -28,6 +29,7 @@ import { cn } from "@/lib/utils";
 const tabs = [
   { href: "/dashboard/clipper", label: "URL Clipper", icon: Scissors },
   { href: "/dashboard/faceless", label: "Faceless Video", icon: Wand2 },
+  { href: "/dashboard/movie-recognition", label: "Movie Recognition", icon: Film },
   { href: "/dashboard/hooks", label: "Hook Writer", icon: Sparkles },
   { href: "/dashboard/captions", label: "Captions", icon: Type },
   { href: "/dashboard/posts", label: "Posts", icon: Send },

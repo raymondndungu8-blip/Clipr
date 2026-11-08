@@ -269,6 +269,45 @@ export interface Database {
         };
         Relationships: [];
       };
+      movie_recognition_jobs: {
+        Row: {
+          id: string;
+          user_id: string;
+          upload_key: string;
+          hint: string | null;
+          status: "pending" | "processing" | "done" | "failed";
+          matches: Json | null;
+          error_message: string | null;
+          progress: number;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          upload_key: string;
+          hint?: string | null;
+          status?: "pending" | "processing" | "done" | "failed";
+          matches?: Json | null;
+          error_message?: string | null;
+          progress?: number;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          upload_key?: string;
+          hint?: string | null;
+          status?: "pending" | "processing" | "done" | "failed";
+          matches?: Json | null;
+          error_message?: string | null;
+          progress?: number;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
