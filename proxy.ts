@@ -2,8 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 /**
- * Refreshes the Supabase session on every dashboard request and redirects
- * unauthenticated users to /login. Cookie plumbing per @supabase/ssr docs.
+ * Refreshes the Supabase session on every request and redirects
+ * unauthenticated users from dashboard to /login.
+ * Redirects authenticated users from auth pages to /dashboard.
  * (Next.js 16: the `middleware` convention was renamed to `proxy`.)
  */
 export async function proxy(req: NextRequest) {
@@ -40,10 +41,24 @@ export async function proxy(req: NextRequest) {
     console.error("[proxy] auth check failed:", err);
   }
 
-  if (!user) {
+  const isAuthRoute =
+    req.nextUrl.pathname.startsWith("/login") ||
+    req.nextUrl.pathname.startsWith("/signup") ||
+    req.nextUrl.pathname.startsWith("/reset-password");
+
+  const isDashboardRoute = req.nextUrl.pathname.startsWith("/dashboard");
+
+  if (!user && isDashboardRoute) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirect", req.nextUrl.pathname);
+    return NextResponse.redirect(url);
+  }
+
+  if (user && isAuthRoute) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/dashboard";
+    url.searchParams.delete("redirect");
     return NextResponse.redirect(url);
   }
 
@@ -51,5 +66,10 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/login",
+    "/signup",
+    "/reset-password",
+  ],
 };
